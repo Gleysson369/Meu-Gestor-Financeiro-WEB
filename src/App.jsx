@@ -13,7 +13,7 @@ import Dividas from './pages/Dividas';
 import Configuracoes from './pages/Configuracoes';
 import FluxoDeCaixa from './pages/Saldo';
 import { Footer } from './components/Footer/Footer';
-import logo from './assets/img/Marca 01.png';
+import logo from './assets/img/marca-01.png';
 import menuIcon from './assets/img/grid-inside.svg';
 
 const NAV_ITEMS = [
