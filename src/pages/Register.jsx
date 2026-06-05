@@ -77,7 +77,7 @@ const Register = () => {
         {/* Cabeçalho Azul Escuro */}
         <div className="bg-[#1552B3] p-12 flex flex-col items-center justify-center text-center">
           <div className="w-24 h-24 bg-white rounded-[22px] p-1.5 border border-white/50 shadow-inner mb-6 overflow-hidden">
-            <img src={logo} alt="Marca 01" className="w-full h-full object-cover rounded-[14px]" />
+            <img src={logo} alt="marca-01" className="w-full h-full object-cover rounded-[14px]" />
           </div>
           <h2 className="text-white text-3xl font-bold tracking-tight">
             Crie sua Conta
