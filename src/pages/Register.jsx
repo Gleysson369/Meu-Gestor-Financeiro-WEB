@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/img/Marca 01.png';
+import logo from '../assets/img/marca-01.png';
 import { auth } from '../services/firebase';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 
