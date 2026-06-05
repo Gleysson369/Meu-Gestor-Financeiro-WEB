@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
 import { auth } from './services/firebase';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import Home from './pages/Home';
 import Despesas from './pages/Despesas';
 import Receita from './pages/Receita';
@@ -14,6 +14,7 @@ import Configuracoes from './pages/Configuracoes';
 import FluxoDeCaixa from './pages/Saldo';
 import { Footer } from './components/Footer/Footer';
 import logo from './assets/img/Marca 01.png';
+import menuIcon from './assets/img/grid-inside.svg';
 
 const NAV_ITEMS = [
   { name: 'Inicio', path: '/' },
@@ -79,7 +80,7 @@ const Navbar = () => {
             Sair
           </button>
           <button onClick={toggleMenu} className="md:hidden text-gray-400 hover:text-white p-2">
-            <img className="w-8 h-8" src="/assets/img/grid-inside.svg" alt="menu-icon" />
+            <img className="w-8 h-8" src={menuIcon} alt="menu-icon" />
           </button>
         </div>
       </nav>
@@ -111,6 +112,27 @@ const Navbar = () => {
   );
 };
 
+const ProtectedRoute = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen bg-black flex items-center justify-center text-white font-black uppercase text-[10px] tracking-widest animate-pulse">Validando Sessão...</div>;
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  return children;
+};
+
 const PageLayout = () => {
   const location = useLocation();
   // Não mostrar footer nas páginas com bottom nav se preferir, ou manter ambos
@@ -136,7 +158,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         
         {/* Layout fixo que não recarrega ao navegar */}
-        <Route element={<PageLayout />}>
+        <Route element={<ProtectedRoute><PageLayout /></ProtectedRoute>}>
           <Route path="/" element={<Home />} />
           <Route path="/despesas" element={<Despesas />} />
           <Route path="/receita" element={<Receita />} />
