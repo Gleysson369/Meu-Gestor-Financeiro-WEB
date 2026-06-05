@@ -13,8 +13,7 @@ import Dividas from './pages/Dividas';
 import Configuracoes from './pages/Configuracoes';
 import FluxoDeCaixa from './pages/Saldo';
 import { Footer } from './components/Footer/Footer';
-import logo from './assets/img/marca-01.png'; // Garanta que o arquivo esteja todo em minúsculo
-import menuIcon from './assets/img/grid-inside.svg';
+import logo from './assets/img/marca-01.png';
 
 const NAV_ITEMS = [
   { name: 'Inicio', path: '/' },
@@ -80,7 +79,9 @@ const Navbar = () => {
             Sair
           </button>
           <button onClick={toggleMenu} className="md:hidden text-gray-400 hover:text-white p-2">
-            <img className="w-8 h-8" src={menuIcon} alt="menu-icon" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/>
+            </svg>
           </button>
         </div>
       </nav>
