@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/img/Marca 01.png';
+import logo from '../assets/img/marca-01.png'; // Alterado para bater com o App.jsx
 import { auth } from '../services/firebase';
-import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, sendPasswordResetEmail } from 'firebase/auth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -30,6 +31,20 @@ const Login = () => {
       alert('Usuário ou senha inválidos.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      alert('Por favor, informe seu e-mail no campo acima para recuperar a senha.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
+    } catch (error) {
+      console.error('Erro ao enviar e-mail de recuperação:', error);
+      alert('Ocorreu um erro ao tentar enviar o e-mail de recuperação. Verifique se o e-mail está correto.');
     }
   };
 
@@ -74,14 +89,36 @@ const Login = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
               <input 
-                className="w-full bg-white border border-gray-300 rounded-[16px] pl-12 pr-4 py-5 text-gray-700 text-base focus:border-[#1552B3] focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-400"
-                type="password" 
+                className="w-full bg-white border border-gray-300 rounded-[16px] pl-12 pr-12 py-5 text-gray-700 text-base focus:border-[#1552B3] focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-400"
+                type={showPassword ? "text" : "password"} 
                 id="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Senha"
                 required 
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1552B3] transition-colors"
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
+
+            {/* Opção Esqueci minha Senha */}
+            <div className="flex justify-end px-1">
+              <button 
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs font-semibold text-[#1A66D4] hover:underline"
+              >
+                Esqueci minha senha
+              </button>
             </div>
 
             {/* Dica de segurança para o usuário */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
 import { auth } from './services/firebase';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { signOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
 import Home from './pages/Home';
 import Despesas from './pages/Despesas';
 import Receita from './pages/Receita';
@@ -13,7 +13,7 @@ import Dividas from './pages/Dividas';
 import Configuracoes from './pages/Configuracoes';
 import FluxoDeCaixa from './pages/Saldo';
 import { Footer } from './components/Footer/Footer';
-import logo from './assets/img/marca-01.png';
+import logo from './assets/img/marca-01.png'; // Garanta que o arquivo esteja todo em minúsculo
 import menuIcon from './assets/img/grid-inside.svg';
 
 const NAV_ITEMS = [
@@ -112,23 +112,62 @@ const Navbar = () => {
   );
 };
 
-const ProtectedRoute = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
+const ProtectedRoute = ({ user, loading, children }) => {
   if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center text-white font-black uppercase text-[10px] tracking-widest animate-pulse">Validando Sessão...</div>;
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <img src={logo} alt="Carregando..." className="h-12 w-auto animate-pulse opacity-50" />
+        <div className="text-white font-black uppercase text-[10px] tracking-widest animate-pulse">Validando Sessão...</div>
+      </div>
+    );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" />;
+
+  // Bloqueio de Verificação de E-mail
+  if (!user.emailVerified) {
+    const handleCheckVerification = async () => {
+      try {
+        // Força o Firebase a buscar os dados mais recentes do usuário no servidor
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          window.location.reload(); // Recarrega para atualizar o estado do React
+        } else {
+          alert('O e-mail ainda não foi verificado. Por favor, clique no link enviado para ' + user.email);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    const handleResend = async () => {
+      try {
+        await sendEmailVerification(auth.currentUser);
+        alert('Novo e-mail de verificação enviado!');
+      } catch (err) {
+        alert('Aguarde um momento antes de tentar reenviar.');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
+        <div className="max-w-md space-y-6">
+          <div className="w-20 h-20 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20 animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>
+          </div>
+          <h2 className="text-white text-2xl font-black uppercase italic">Verifique seu E-mail</h2>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Para acessar seu gestor financeiro, você precisa confirmar seu endereço de e-mail <b>({user.email})</b>. Verifique sua caixa de entrada e spam.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button onClick={handleCheckVerification} className="w-full bg-white text-black font-black uppercase text-[10px] tracking-widest py-4 rounded-xl hover:bg-gray-200 transition-all">Já verifiquei, entrar agora</button>
+            <button onClick={handleResend} className="text-yellow-500 font-bold text-[10px] uppercase tracking-widest hover:underline">Reenviar link de confirmação</button>
+            <button onClick={() => signOut(auth)} className="text-red-600 font-bold text-[10px] uppercase tracking-widest mt-4">Sair da conta</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return children;
 };
@@ -151,14 +190,32 @@ const PageLayout = () => {
 };
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Rotas Públicas: Se já estiver logado, redireciona para a Home */}
+        <Route 
+          path="/login" 
+          element={!loading && user ? <Navigate to="/" replace /> : <Login />} 
+        />
+        <Route 
+          path="/register" 
+          element={!loading && user ? <Navigate to="/" replace /> : <Register />} 
+        />
         
-        {/* Layout fixo que não recarrega ao navegar */}
-        <Route element={<ProtectedRoute><PageLayout /></ProtectedRoute>}>
+        {/* Rotas Protegidas: Iniciam aqui. Se não logado, o ProtectedRoute manda para /login */}
+        <Route element={<ProtectedRoute user={user} loading={loading}><PageLayout /></ProtectedRoute>}>
           <Route path="/" element={<Home />} />
           <Route path="/despesas" element={<Despesas />} />
           <Route path="/receita" element={<Receita />} />
