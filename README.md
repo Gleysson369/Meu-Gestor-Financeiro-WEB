@@ -54,7 +54,11 @@ Diferente da versão mobile, a versão WEB foca em produtividade e análise deta
     VITE_FIREBASE_API_KEY=sua_key
     VITE_FIREBASE_AUTH_DOMAIN=seu_dominio
     VITE_FIREBASE_PROJECT_ID=seu_id
+<<<<<<< HEAD
     # ... demais chaves do Firebase
+=======
+    # ... demais chaves
+>>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     ```
 
 4.  **Executar em modo desenvolvimento:**
@@ -62,8 +66,11 @@ Diferente da versão mobile, a versão WEB foca em produtividade e análise deta
     npm run dev
     ```
 
+<<<<<<< HEAD
 > As cotações são registradas manualmente no sistema. Não é necessário nenhum token BRAPI para usar a versão atual.
 
+=======
+>>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 ## 🛡️ Segurança e Privacidade
 
 O projeto utiliza o princípio de menor privilégio. As regras do Firestore garantem que:

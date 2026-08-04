@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+<<<<<<< HEAD
 import { NotificationProvider } from './components/NotificationProvider.jsx'
 
 const storedTheme = localStorage.getItem('theme');
@@ -27,5 +28,11 @@ createRoot(document.getElementById('root')).render(
     <NotificationProvider>
       <App />
     </NotificationProvider>
+=======
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+>>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   </StrictMode>,
 )
