@@ -9,7 +9,7 @@ import { consolidarCarteira, buildSummary, formatCurrency, formatPercentage, toI
 import { buildBuySellComparison } from '../services/investmentAnalyticsService.js';
 import { buildHomeTips } from '../services/financialTipsService';
 
-const ASSET_TYPES = ['Ação', 'FII', 'ETF'];
+const ASSET_TYPES = ['Ação', 'FII', 'ETF', 'Criptomoeda', 'BDR', 'Título público', 'Título bancário', 'Título corporativo', 'Plano previdenciário'];
 const MOVEMENT_TYPES = ['Compra', 'Venda', 'Dividendo', 'Juros sobre capital próprio', 'Rendimento', 'Bonificação', 'Desdobramento', 'Grupamento'];
 const PROVENT_TYPES = ['Dividendo', 'Juros sobre capital próprio', 'Rendimento', 'Amortização', 'Outro'];
 const QUOTE_LABELS = ['Ativo', 'Cotação informada manualmente', 'Última atualização'];
@@ -74,6 +74,7 @@ const Investimentos = () => {
     valorPorUnidade: '',
     quantidadeReferencia: '',
     valorTotal: '',
+    cotacaoNaData: '',
     observacao: '',
     manualValorTotal: false,
   });
@@ -133,6 +134,7 @@ const Investimentos = () => {
       valorPorUnidade: '',
       quantidadeReferencia: '',
       valorTotal: '',
+      cotacaoNaData: '',
       observacao: '',
       manualValorTotal: false,
     });
@@ -237,6 +239,15 @@ const Investimentos = () => {
     // Usando toFixed(2) para garantir duas casas decimais como string
     setProventoForm(prev => ({ ...prev, valorTotal: total > 0 ? total.toFixed(2) : '' }));
   }, [proventoForm.valorPorUnidade, proventoForm.quantidadeReferencia, proventoForm.manualValorTotal]);
+
+  const proventoYield = useMemo(() => {
+    const valorPorUnidade = Number(proventoForm.valorPorUnidade) || 0;
+    const cotacao = Number(proventoForm.cotacaoNaData) || 0;
+    if (valorPorUnidade > 0 && cotacao > 0) {
+      return (valorPorUnidade / cotacao) * 100;
+    }
+    return 0;
+  }, [proventoForm.valorPorUnidade, proventoForm.cotacaoNaData]);
 
   // Efeito para o Gráfico de Distribuição (Rosca)
   useEffect(() => {
@@ -583,6 +594,7 @@ const Investimentos = () => {
         valorPorUnidade: Number(proventoForm.valorPorUnidade),
         quantidadeReferencia: Number(proventoForm.quantidadeReferencia),
         valorTotal: Number(proventoForm.valorTotal),
+        cotacaoNaData: Number(proventoForm.cotacaoNaData) || 0,
         userId: user.uid,
         updatedAt: new Date().toISOString(),
       };
@@ -656,6 +668,7 @@ const Investimentos = () => {
       valorPorUnidade: String(item.valorPorUnidade || ''),
       quantidadeReferencia: String(item.quantidadeReferencia || ''),
       valorTotal: String(item.valorTotal || ''),
+      cotacaoNaData: String(item.cotacaoNaData || ''),
       observacao: item.observacao || '',
       manualValorTotal: true,
     });
@@ -751,6 +764,7 @@ const Investimentos = () => {
             valorPorUnidade: '',
             quantidadeReferencia: '',
             valorTotal: '',
+            cotacaoNaData: '',
             manualValorTotal: false,
           });
           setActiveTab('proventos');
@@ -1552,7 +1566,7 @@ const Investimentos = () => {
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
                     Quantidade <span className="text-red-500">*</span>
-                    <input type="number" step="0.0001" min="0" value={movementForm.quantidade} onChange={(e) => setMovementForm({ ...movementForm, quantidade: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <input type="number" step="any" min="0" value={movementForm.quantidade} onChange={(e) => setMovementForm({ ...movementForm, quantidade: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
                     {movementErrors.quantidade && <span className="text-xs text-red-400">{movementErrors.quantidade}</span>}
                     {showAvailableQuantity && (
                       <p className="mt-2 text-xs text-text-secondary">
@@ -1728,7 +1742,7 @@ const Investimentos = () => {
                     <th className="px-4 py-3">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">{
+                <tbody className="divide-y divide-border">
                   filteredMovements.map((item) => (
                     <tr key={item.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-4 py-4">{item.data}</td>
@@ -1777,7 +1791,7 @@ const Investimentos = () => {
 
       {activeTab === 'proventos' && (
         <section className="space-y-6"> {/* Filters for Proventos */}
-          <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+          <div className="grid gap-6 lg:grid-cols-2">
             <div className="bg-surface border border-border rounded-3xl p-6 shadow-lg">
               <h3 className="text-lg font-bold text-text-primary">Registrar provento</h3>
               <form onSubmit={saveProvento} className="mt-6 space-y-4">
@@ -1812,7 +1826,7 @@ const Investimentos = () => {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
                     Quantidade de referência <span className="text-red-500">*</span>
-                    <input type="number" step="0.0001" min="0" value={proventoForm.quantidadeReferencia} onChange={(e) => setProventoForm({ ...proventoForm, quantidadeReferencia: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <input type="number" step="any" min="0" value={proventoForm.quantidadeReferencia} onChange={(e) => setProventoForm({ ...proventoForm, quantidadeReferencia: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
                     {proventoErrors.quantidadeReferencia && <span className="text-xs text-red-400">{proventoErrors.quantidadeReferencia}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
@@ -1821,6 +1835,19 @@ const Investimentos = () => {
                     {proventoErrors.valorTotal && <span className="text-xs text-red-400">{proventoErrors.valorTotal}</span>}
                   </label>
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    Cotação do ativo na data
+                    <input type="number" step="0.01" min="0" value={proventoForm.cotacaoNaData} onChange={(e) => setProventoForm({ ...proventoForm, cotacaoNaData: e.target.value })} placeholder="Preço para calcular yield" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                  </label>
+                  <div className="space-y-2 text-sm text-text-secondary">
+                    Yield do provento
+                    <div className="w-full rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-text-primary font-bold">
+                      {proventoYield > 0 ? `${proventoYield.toFixed(2)}%` : '—'}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="text-sm text-text-secondary">
                   <label className="space-y-2 flex items-center gap-2">
                     <input type="checkbox" checked={proventoForm.manualValorTotal} onChange={(e) => setProventoForm({ ...proventoForm, manualValorTotal: e.target.checked })} className="h-4 w-4 rounded border-border bg-background-secondary text-primary" />
@@ -1839,92 +1866,37 @@ const Investimentos = () => {
                 </div>
               </form>
             </div>
-            <div className="bg-surface border border-border rounded-3xl p-5 shadow-lg">
-              <h3 className="text-lg font-bold text-text-primary">Filtros dos proventos</h3>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Data de
-                  <input
-                    type="date"
-                    value={proventDataDe} onChange={(e) => setProventDataDe(e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Data até
-                  <input
-                    type="date"
-                    value={proventDataAte} onChange={(e) => setProventDataAte(e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Código do ativo
-                  <input
-                    type="text"
-                    value={proventFilters.search}
-                    onChange={(e) => setProventFilters({ ...proventFilters, search: e.target.value })}
-                    placeholder="Ex: ITUB4"
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Tipo de provento
-                  <select
-                    value={proventFilters.type}
-                    onChange={(e) => setProventFilters({ ...proventFilters, type: e.target.value })}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  >
-                    <option value="all">Todos</option>
-                    {PROVENT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Valor mínimo
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={proventFilters.minAmount}
-                    onChange={(e) => setProventFilters({ ...proventFilters, minAmount: e.target.value })}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Valor máximo
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={proventFilters.maxAmount}
-                    onChange={(e) => setProventFilters({ ...proventFilters, maxAmount: e.target.value })}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-text-secondary">
-                  Ordenar por
-                  <select
-                    value={proventFilters.sortBy}
-                    onChange={(e) => setProventFilters({ ...proventFilters, sortBy: e.target.value })}
-                    className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition"
-                  >
-                    <option value="recent">Mais recentes</option>
-                    <option value="oldest">Mais antigos</option>
-                    <option value="valueDesc">Maior valor total</option>
-                    <option value="valueAsc">Menor valor total</option>
-                    <option value="codeAsc">Código A-Z</option>
-                    <option value="codeDesc">Código Z-A</option>
-                    <option value="qtyDesc">Maior valor por unidade</option>
-                    <option value="qtyAsc">Menor valor por unidade</option>
-                  </select>
-                </label>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setProventFilters({ search: '', type: 'all', minAmount: '', maxAmount: '', sortBy: 'recent' })}
-                  className="rounded-2xl border border-border bg-surface px-5 py-3 text-sm font-semibold text-text-primary hover:bg-surface-elevated"
-                >
-                  Limpar filtros
-                </button>
-              </div>
+            <div className="bg-surface border border-border rounded-3xl p-6 shadow-lg">
+              <h3 className="text-lg font-bold text-text-primary">Registrar Cotação Manual</h3>
+              <form onSubmit={saveQuote} className="mt-6 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    Ativo <span className="text-red-500">*</span>
+                    <input list="movement-assets" value={quoteForm.ativo} onChange={(e) => setQuoteForm({ ...quoteForm, ativo: e.target.value.toUpperCase() })} placeholder="Ex: PETR4" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    {quoteErrors.ativo && <span className="text-xs text-red-400">{quoteErrors.ativo}</span>}
+                  </label>
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    Cotação (R$) <span className="text-red-500">*</span>
+                    <input type="number" step="0.01" min="0" value={quoteForm.cotacao} onChange={(e) => setQuoteForm({ ...quoteForm, cotacao: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    {quoteErrors.cotacao && <span className="text-xs text-red-400">{quoteErrors.cotacao}</span>}
+                  </label>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    Data <span className="text-red-500">*</span>
+                    <input type="date" value={quoteForm.data} onChange={(e) => setQuoteForm({ ...quoteForm, data: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    {quoteErrors.data && <span className="text-xs text-red-400">{quoteErrors.data}</span>}
+                  </label>
+                  <label className="space-y-2 text-sm text-text-secondary">
+                    Horário
+                    <input type="time" value={quoteForm.horario} onChange={(e) => setQuoteForm({ ...quoteForm, horario: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                  </label>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button type="button" onClick={resetForms} className="rounded-2xl border border-border bg-surface px-5 py-3 text-sm font-semibold text-text-primary hover:bg-surface-elevated">Limpar</button>
+                  <button type="submit" className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary-hover">{editingQuoteId ? 'Atualizar Cotação' : 'Registrar Cotação'}</button>
+                </div>
+              </form>
             </div>
           </div>
 
@@ -1968,7 +1940,7 @@ const Investimentos = () => {
           </div>
 
           <div className="bg-surface border border-border rounded-3xl shadow-lg overflow-x-auto">
-            <h3 className="text-lg font-bold text-text-primary p-5">Histórico de cotações</h3>
+            <h3 className="text-lg font-bold text-text-primary p-5">Histórico de Cotação Manual</h3>
             {filteredQuotes.length > 0 ? (
               <table className="min-w-full text-left text-sm text-text-secondary mt-4">
                 <thead className="text-xs uppercase tracking-[0.2em] text-text-muted bg-table-header">

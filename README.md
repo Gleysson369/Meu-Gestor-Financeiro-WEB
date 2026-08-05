@@ -33,8 +33,13 @@ Diferente da versão mobile, a versão WEB foca em produtividade e análise deta
 1.  **Dashboard Consolidado:** Visão geral do saldo, progresso de reservas e quitação de dívidas.
 2.  **Gestão de Lançamentos:** CRUD completo de Receitas e Despesas com suporte a categorias customizadas.
 3.  **Controle de Limites:** Definição de metas por categoria com alertas visuais de "Estourado" ou "Atenção".
-4.  **Dívidas & Acordos:** Simulador de parcelamento e controle de evolução de pagamentos.
-5.  **Ajustes de Perfil:** Gestão de categorias, troca de senha e configuração de compartilhamento familiar.
+4.  **Módulo de Investimentos Completo:**
+    *   **Carteira Consolidada:** Visão detalhada da posição, preço médio, rentabilidade e participação de cada ativo.
+    *   **Registro Flexível:** Suporte para Ações, FIIs, ETFs, Criptomoedas, BDRs e Títulos, com campos de alta precisão.
+    *   **Controle de Proventos:** Cadastro de dividendos e rendimentos com cálculo automático de *Yield*.
+    *   **Gestão de Cotações:** Registro e histórico de cotações manuais para ativos sem atualização automática.
+5.  **Dívidas & Acordos:** Simulador de parcelamento e controle de evolução de pagamentos.
+6.  **Ajustes de Perfil:** Gestão de categorias, troca de senha e configuração de compartilhamento familiar.
 
 ## 💻 Instalação e Execução
 
