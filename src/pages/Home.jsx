@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../services/firebase';
 import { collection, getDocs, query, where, doc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import Chart from 'chart.js/auto';
 import { buildHomeTips } from '../services/financialTipsService.js';
-=======
-import { db, auth } from '../services/firebase';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import Chart from 'chart.js/auto';
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
 const Home = () => {
   const meses = [
@@ -19,7 +12,6 @@ const Home = () => {
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
   const anoAtual = new Date().getFullYear();
-<<<<<<< HEAD
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -32,8 +24,6 @@ const Home = () => {
     economia: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>,
     reservas: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>,
   };
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -44,43 +34,29 @@ const Home = () => {
   const paymentChartRef = useRef(null);
   const paymentChartInstance = useRef(null);
 
-<<<<<<< HEAD
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState('Usuário');
   const [periodo, setPeriodo] = useState('current_month'); 
-=======
-  const [user, setUser] = useState(null);
-  const [userName, setUserName] = useState('Usuário');
-  const [periodo, setPeriodo] = useState(`${meses[new Date().getMonth()]} ${anoAtual}`); 
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   const [dados, setDados] = useState({
     saldoTotal: 0,
     entradas: 0,
     saidas: 0,
-<<<<<<< HEAD
     contasAVencer: 0,
     despesasAtrasadas: 0,
     economiaMes: 0,
     reservasAcumuladas: 0,
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     porCategoria: [],
     despesasPagas: 0,
     despesasPendentes: 0,
     alertas: [],
     reservasProgresso: [],
     dividasProgresso: [],
-<<<<<<< HEAD
     comparativos: {},
   });
   const [monthlyComparison, setMonthlyComparison] = useState([]);
   const [tips, setTips] = useState([]);
   const [loading, setLoading] = useState(true);
-=======
-  });
-  const [monthlyComparison, setMonthlyComparison] = useState([]);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
   // 1. Efeito para monitorar Auth (roda apenas uma vez)
   useEffect(() => {
@@ -97,7 +73,6 @@ const Home = () => {
   useEffect(() => {
     if (!user) return;
 
-<<<<<<< HEAD
     const getPeriodDates = (periodKey) => {
       const now = new Date();
       let startDate, endDate;
@@ -137,24 +112,10 @@ const Home = () => {
         const userUid = user.uid;
         const { start: dataInicio, end: dataFim } = getPeriodDates(periodo);
         
-=======
-    const fetchDashboardData = async () => {
-      try {
-        const userUid = user.uid;
-        const [mesNome, ano] = periodo.split(' ');
-        const mesIndex = meses.indexOf(mesNome);
-
-        // Busca o perfil para ver se há parceiro e constrói a lista de IDs
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         const userDocRef = doc(db, "usuarios", userUid);
         const userDocSnap = await getDoc(userDocRef);
         const partnerId = userDocSnap.data()?.parceiroId;
         const ids = partnerId ? [userUid, partnerId] : [userUid];
-<<<<<<< HEAD
-=======
-
-        // Busca os documentos de limite de ambos os usuários
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         let limitesMap = {};
         for (const id of ids) {
           const limiteSnap = await getDoc(doc(db, "limites", id));
@@ -166,7 +127,6 @@ const Home = () => {
           }
         }
 
-<<<<<<< HEAD
         const qReceitas = query(collection(db, "rendas"),
           where("userId", "in", ids),
           where("data", ">=", dataInicio), 
@@ -197,54 +157,10 @@ const Home = () => {
         let totalAVencer = 0;
 
         collectedReceitas.forEach((item) => totalEntradas += Number(item.valor || 0));
-=======
-        const qReceitasAno = query(collection(db, "rendas"),
-          where("userId", "in", ids),
-          where("data", ">=", `${ano}-01-01`), 
-          where("data", "<=", `${ano}-12-31`));
-        
-        const qDespesasAno = query(collection(db, "despesas"),
-          where("userId", "in", ids),
-          where("data", ">=", `${ano}-01-01`), 
-          where("data", "<=", `${ano}-12-31`));
-
-        const [receitasSnap, despesasSnap, reservasSnap, dividasSnap] = await Promise.all([
-          getDocs(qReceitasAno), 
-          getDocs(qDespesasAno),
-          getDocs(query(collection(db, "reservas"), where("userId", "in", ids))),
-          getDocs(query(collection(db, "dividas"), where("userId", "in", ids)))
-        ]);
-
-        console.log(`Reservas: ${reservasSnap.size}, Dívidas: ${dividasSnap.size}`);
-
-        console.log(`Dados encontrados: ${receitasSnap.size} receitas, ${despesasSnap.size} despesas`);
-
-        // Inicializa estrutura para Jan-Dez
-        const totaisMensais = meses.map(() => ({ entradas: 0, saidas: 0 }));
-        const categoriasMap = {};
-        let entradasMesSelecionado = 0;
-        let saidasMesSelecionado = 0;
-        let pagasMes = 0;
-        let pendentesMes = 0;
-
-        receitasSnap.forEach(doc => {
-          const d = doc.data();
-          const valor = Number(d.valor) || 0;
-          
-          if (d.data && typeof d.data === 'string') {
-            const partesData = d.data.split('-');
-            const mesDoc = parseInt(partesData[1]) - 1;
-            
-            if (mesDoc >= 0 && mesDoc < 12) totaisMensais[mesDoc].entradas += valor;
-            if (mesDoc === mesIndex) entradasMesSelecionado += valor;
-          }
-        });
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
         despesasSnap.forEach(doc => {
           const d = doc.data();
           const valor = Number(d.valor) || 0;
-<<<<<<< HEAD
           totalSaidas += valor;
           categoriasMap[d.categoria] = (categoriasMap[d.categoria] || 0) + valor;
 
@@ -277,49 +193,18 @@ const Home = () => {
           });
         }
 
-=======
-          
-          if (d.data && typeof d.data === 'string') {
-            const partesData = d.data.split('-');
-            const mesDoc = parseInt(partesData[1]) - 1;
-
-            if (mesDoc >= 0 && mesDoc < 12) totaisMensais[mesDoc].saidas += valor;
-            
-            if (mesDoc === mesIndex) {
-              saidasMesSelecionado += valor;
-              categoriasMap[d.categoria] = (categoriasMap[d.categoria] || 0) + valor;
-              
-              if (d.pago) {
-                pagasMes += valor;
-              } else {
-                pendentesMes += valor;
-              }
-            }
-          }
-        });
-
-        // Gerar Alertas de Limite (Regra do App Flutter)
-        const alertasGerados = [];
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         Object.entries(categoriasMap).forEach(([cat, gasto]) => {
           const limite = limitesMap[cat];
           if (limite) {
             const percentual = (gasto / limite) * 100;
             if (percentual > 100) {
-<<<<<<< HEAD
               alertasGerados.push({ id: `alert-limit-exceeded:${cat}`, cat, status: 'Limite ultrapassado', percentual: Math.round(percentual), message: `Gastos em ${cat} estão ${Math.round(percentual)}% do limite.`, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' });
             } else if (percentual >= 80) {
               alertasGerados.push({ id: `alert-limit-warning:${cat}`, cat, status: 'Limite próximo', percentual: Math.round(percentual), message: `Gastos em ${cat} atingiram ${Math.round(percentual)}% do limite.`, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' });
-=======
-              alertasGerados.push({ cat, status: 'Estourado', percentual: Math.round(percentual), color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' });
-            } else if (percentual >= 80) {
-              alertasGerados.push({ cat, status: 'Atenção', percentual: Math.round(percentual), color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' });
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             }
           }
         });
 
-<<<<<<< HEAD
         despesasSnap.docs.forEach((docItem) => {
           const d = docItem.data();
           if (!d.pago && d.data) {
@@ -355,16 +240,10 @@ const Home = () => {
         const resData = reservasSnap.docs.map(doc => {
           const d = doc.data();
           totalReservas += Number(d.valorEconomizado || 0);
-=======
-        // Processar Reservas
-        const resData = reservasSnap.docs.map(doc => {
-          const d = doc.data();
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           const percent = d.valorTotal > 0 ? (d.valorEconomizado / d.valorTotal) * 100 : 0;
           return { nome: d.objetivo, valor: d.valorEconomizado, total: d.valorTotal, percent: Math.min(percent, 100) };
         });
 
-<<<<<<< HEAD
         // Dívidas
         const divData = dividasSnap.docs.map(doc => {
           const d = doc.data();
@@ -423,31 +302,6 @@ const Home = () => {
         console.error("Erro ao filtrar dados do Firebase:", error);
       } finally {
         setLoading(false);
-=======
-        // Processar Dívidas
-        const divData = dividasSnap.docs.map(doc => {
-          const d = doc.data();
-          const totalPago = (d.parcelasPagas || 0) * (d.valorParcela || 0);
-          const percent = d.valorTotal > 0 ? (totalPago / d.valorTotal) * 100 : 0;
-          return { nome: d.credor, valor: totalPago, total: d.valorTotal, percent: Math.min(percent, 100) };
-        });
-
-        setDados({
-          entradas: entradasMesSelecionado,
-          saidas: saidasMesSelecionado,
-          saldoTotal: entradasMesSelecionado - saidasMesSelecionado,
-          porCategoria: Object.entries(categoriasMap).map(([name, value]) => ({ name, value })),
-          despesasPagas: pagasMes,
-          despesasPendentes: pendentesMes,
-          alertas: alertasGerados,
-          reservasProgresso: resData,
-          dividasProgresso: divData,
-        });
-
-        setMonthlyComparison(totaisMensais);
-      } catch (error) {
-        console.error("Erro ao filtrar dados do Firebase:", error);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       }
     };
 
@@ -455,11 +309,7 @@ const Home = () => {
   }, [periodo, user]); // Recarrega se o período ou o usuário logado mudar
 
   // 3. Efeito para renderizar os gráficos quando os dados chegarem
-<<<<<<< HEAD
   useEffect(() => { // eslint-disable-line
-=======
-  useEffect(() => {
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     if (monthlyComparison.length === 0 || !chartRef.current || !categoryChartRef.current || !distChartRef.current || !paymentChartRef.current) return;
 
     // Destruir instâncias anteriores para evitar bugs de sobreposição
@@ -592,7 +442,6 @@ const Home = () => {
     };
   }, [monthlyComparison, dados]);
 
-<<<<<<< HEAD
   const dicas = tips;
 
   const Card = ({ title, value, icon, comparison, colorClass }) => {
@@ -610,19 +459,11 @@ const Home = () => {
       </div>
     );
   };
-=======
-  const dicas = [
-    "Tente manter suas saídas abaixo de 70% da sua receita total.",
-    "Sua reserva de emergência atual cobre 2 meses de gastos.",
-    "A categoria 'Alimentação' subiu 15% em relação ao mês passado."
-  ];
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header com Nome do Usuário */}
       <div className="flex justify-between items-end">
-<<<<<<< HEAD
         <div className="border-l-4 border-blue-500 pl-4">
           <h2 className="text-white font-bold text-2xl">Dashboard</h2>
           <p className="text-gray-400 text-sm">Bem-vindo, {userName}</p>
@@ -678,72 +519,12 @@ const Home = () => {
         <Card title="Contas a Vencer" value={dados.contasAVencer} icon={ICONS.vencer} colorClass="text-yellow-500" />
         <Card title="Despesas Atrasadas" value={dados.despesasAtrasadas} icon={ICONS.atrasadas} colorClass="text-orange-500" />
         <Card title="Reservas Acumuladas" value={dados.reservasAcumuladas} icon={ICONS.reservas} colorClass="text-purple-500" />
-=======
-        <div className="border-l-4 border-blue-600 pl-4">
-          <h2 className="text-white font-black italic uppercase tracking-tighter text-3xl">Dashboard</h2>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em]">Bem-vindo, {userName}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Período de Análise</p>
-          <select 
-            value={periodo} 
-            onChange={(e) => setPeriodo(e.target.value)}
-            className="bg-transparent text-white font-bold outline-none cursor-pointer"
-          >
-            {meses.map((mes) => (
-              <option key={mes} className="bg-[#14191e]" value={`${mes} ${anoAtual}`}>
-                {mes} {anoAtual}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Alertas de Limite Excedido */}
-      {dados.alertas.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {dados.alertas.map((alerta, idx) => (
-            <div key={idx} className={`${alerta.bg} ${alerta.border} border rounded-2xl p-4 flex items-center gap-4 animate-pulse`}>
-              <div className={`w-10 h-10 rounded-full ${alerta.bg} border ${alerta.border} flex items-center justify-center ${alerta.color}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{alerta.status}: {alerta.cat}</p>
-                <p className={`text-sm font-bold ${alerta.color}`}>Limite atingido em {alerta.percentual}%</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-[#14191e] border border-white/5 p-6 rounded-3xl shadow-2xl">
-          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Saldo Total</p>
-          <h3 className={`text-2xl font-black ${dados.saldoTotal >= 0 ? 'text-white' : 'text-red-500'}`}>
-            R$ {dados.saldoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </h3>
-        </div>
-        <div className="bg-[#14191e] border border-white/5 p-6 rounded-3xl shadow-2xl">
-          <p className="text-green-500/50 text-[10px] font-black uppercase tracking-widest mb-1">Entradas</p>
-          <h3 className="text-2xl font-black text-green-500">
-            R$ {dados.entradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </h3>
-        </div>
-        <div className="bg-[#14191e] border border-white/5 p-6 rounded-3xl shadow-2xl">
-          <p className="text-red-500/50 text-[10px] font-black uppercase tracking-widest mb-1">Saídas</p>
-          <h3 className="text-2xl font-black text-red-500">
-            R$ {dados.saidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </h3>
-        </div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       </div>
 
       {/* Área de Gráficos Principais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Comparativo Mensal - Ocupa 2 colunas no desktop */}
         <div className="lg:col-span-2 bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
             Comparativo Mensal (E/S)
@@ -759,20 +540,11 @@ const Home = () => {
                 </div>
               </div>
             )}
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-            Comparativo Mensal (E/S)
-          </h3>
-          <div className="h-[260px]">
-            <canvas ref={chartRef} id="chartComparativo"></canvas>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </div>
         </div>
 
         {/* Status de Pagamento */}
         <div className="bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
             Status das Despesas
@@ -780,15 +552,6 @@ const Home = () => {
           <div className="h-[260px]">
             {dados.despesasPagas === 0 && dados.despesasPendentes === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500 text-sm">Sem despesas neste período.</div>
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-            Status de Pagamento
-          </h3>
-          <div className="h-[260px]">
-            {dados.despesasPagas === 0 && dados.despesasPendentes === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-600 text-[10px] uppercase font-bold">Sem despesas no mês</div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             ) : (
               <canvas ref={paymentChartRef}></canvas>
             )}
@@ -797,7 +560,6 @@ const Home = () => {
 
         {/* Distribuição E/S % */}
         <div className="bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
             Distribuição (Receita vs Despesa)
@@ -805,15 +567,6 @@ const Home = () => {
           <div className="h-[260px]">
             {dados.entradas === 0 && dados.saidas === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500 text-sm">Sem dados no período</div>
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            Distribuição E/S (%)
-          </h3>
-          <div className="h-[260px]">
-            {dados.entradas === 0 && dados.saidas === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-600 text-[10px] uppercase font-bold">Sem dados no período</div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             ) : (
               <canvas ref={distChartRef}></canvas>
             )}
@@ -824,11 +577,7 @@ const Home = () => {
       {/* Gráfico de Categorias e Lista */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             <span className="w-2 h-2 rounded-full bg-purple-500"></span>
             Gastos por Categoria
           </h3>
@@ -836,17 +585,12 @@ const Home = () => {
             {dados.porCategoria.length > 0 ? (
               <canvas ref={categoryChartRef}></canvas>
             ) : (
-<<<<<<< HEAD
               <div className="flex items-center justify-center h-full text-gray-500 text-sm text-center p-4">Cadastre suas despesas para visualizar a distribuição por categoria.</div>
-=======
-              <div className="flex items-center justify-center h-full text-gray-600 text-[10px] uppercase font-bold">Nenhuma despesa</div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             )}
           </div>
         </div>
 
         <div className="bg-black border border-white/10 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
             Detalhamento de Categorias
@@ -855,26 +599,12 @@ const Home = () => {
             {dados.porCategoria.map((cat, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold uppercase">
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-            Detalhamento de Categorias
-          </h3>
-          <div className="space-y-4 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
-            {dados.porCategoria.map((cat, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                   <span className="text-gray-400">{cat.name}</span>
                   <span className="text-white">R$ {cat.value.toFixed(2)}</span>
                 </div>
                 <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                   <div 
-<<<<<<< HEAD
                     className="bg-blue-500 h-full transition-all duration-500" 
-=======
-                    className="bg-blue-600 h-full transition-all duration-500" 
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                     style={{ width: `${(cat.value / dados.saidas) * 100}%` }}
                   ></div>
                 </div>
@@ -888,7 +618,6 @@ const Home = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Coluna Reservas */}
         <div className="bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
             Progresso das Reservas
@@ -897,16 +626,6 @@ const Home = () => {
             {dados.reservasProgresso.length > 0 ? dados.reservasProgresso.map((item, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold uppercase">
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
-            Progresso das Reservas
-          </h3>
-          <div className="space-y-4 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
-            {dados.reservasProgresso.length > 0 ? dados.reservasProgresso.map((item, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                   <span className="text-gray-400">{item.nome}</span>
                   <span className="text-green-500">{item.percent.toFixed(0)}% (R$ {item.valor.toFixed(2)})</span>
                 </div>
@@ -917,17 +636,12 @@ const Home = () => {
                   ></div>
                 </div>
               </div>
-<<<<<<< HEAD
             )) : <p className="text-gray-500 text-center py-10 text-sm">Sem reservas ativas</p>}
-=======
-            )) : <p className="text-gray-600 text-center py-10 font-bold uppercase text-[10px]">Sem reservas ativas</p>}
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </div>
         </div>
 
         {/* Coluna Dívidas */}
         <div className="bg-[#14191e] border border-white/5 rounded-3xl p-5 shadow-2xl">
-<<<<<<< HEAD
           <h3 className="text-white font-semibold text-sm mb-6 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_8px_#ef4444]"></span>
             Quitação de Dívidas
@@ -936,47 +650,25 @@ const Home = () => {
             {dados.dividasProgresso.length > 0 ? dados.dividasProgresso.map((item, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold uppercase">
-=======
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_8px_#ef4444]"></span>
-            Quitação de Dívidas
-          </h3>
-          <div className="space-y-4 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
-            {dados.dividasProgresso.length > 0 ? dados.dividasProgresso.map((item, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-[10px] font-bold uppercase">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                   <span className="text-gray-400">{item.nome}</span>
                   <span className="text-red-500">{item.percent.toFixed(0)}% Pago</span>
                 </div>
                 <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                   <div 
-<<<<<<< HEAD
                     className="bg-red-500 h-full transition-all duration-1000 shadow-[0_0_10px_#ef4444]" 
-=======
-                    className="bg-red-600 h-full transition-all duration-1000 shadow-[0_0_10px_#ef4444]" 
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                     style={{ width: `${item.percent}%` }}
                   ></div>
                 </div>
                 <div className="flex justify-end">
-<<<<<<< HEAD
                   <span className="text-[10px] text-gray-600 font-semibold">Saldo: R$ {(item.total - item.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                 </div>
               </div>
             )) : <p className="text-gray-500 text-center py-10 text-sm">Sem dívidas pendentes</p>}
-=======
-                  <span className="text-[8px] text-gray-600 uppercase font-black tracking-tighter">Saldo: R$ {(item.total - item.valor).toFixed(2)}</span>
-                </div>
-              </div>
-            )) : <p className="text-gray-600 text-center py-10 font-bold uppercase text-[10px]">Sem dívidas pendentes</p>}
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </div>
         </div>
       </div>
 
       {/* Dicas Financeiras */}
-<<<<<<< HEAD
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-blue-600/20 bg-blue-600/10 p-8">
           <div>
@@ -1020,19 +712,6 @@ const Home = () => {
               Nenhuma dica disponível no momento. Registre despesas ou receitas para obter orientações financeiras personalizadas.
             </div>
           )}
-=======
-      <div className="bg-blue-600/10 border border-blue-600/20 rounded-3xl p-8">
-        <h3 className="text-blue-500 font-black uppercase text-xs tracking-[0.2em] mb-4">Dicas Financeiras Inteligentes</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {dicas.map((dica, i) => (
-            <div key={i} className="flex gap-4">
-              <span className="text-blue-500 font-black text-xl opacity-50">0{i+1}</span>
-              <p className="text-gray-300 text-xs leading-relaxed font-medium">
-                {dica}
-              </p>
-            </div>
-          ))}
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         </div>
       </div>
     </div>

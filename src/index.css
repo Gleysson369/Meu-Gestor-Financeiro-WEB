@@ -298,6 +298,7 @@ html {
     outline: none;
     box-shadow: var(--focus-ring);
     outline-offset: 2px;
+  }
 }
 
 @layer components {

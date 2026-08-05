@@ -25,6 +25,11 @@ const Dividas = () => {
   const [viewingInstallments, setViewingInstallments] = useState(null); // Para o modal de parcelas
   const { notify, confirm } = useNotification();
 
+  const resetForm = () => {
+    setEditingId(null);
+    setFormData({ credor: '', valorTotalDivida: '', valorEntrada: '', parcelas: '', valorParcela: '', taxaJuros: '', dataPrimeiraParcela: '', diaVencimento: '', observacao: '' });
+  };
+
   // Cálculos de Simulação
   const totalAcordoSimulado = (Number(formData.valorParcela || 0) * Number(formData.parcelas || 0)) + Number(formData.valorEntrada || 0);
   const jurosSimulados = totalAcordoSimulado > 0 

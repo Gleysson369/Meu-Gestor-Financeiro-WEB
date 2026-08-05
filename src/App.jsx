@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
 import { auth } from './services/firebase';
 import { signOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { useNotification } from './components/NotificationProvider.jsx';
 import Home from './pages/Home';
 import Despesas from './pages/Despesas';
 import Receita from './pages/Receita';

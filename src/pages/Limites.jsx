@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../services/firebase';
-<<<<<<< HEAD
 import { collection, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNotification } from '../components/NotificationProvider.jsx';
-=======
-import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, orderBy, getDoc, setDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import Chart from 'chart.js/auto';
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
 const Limites = () => {
   const meses = [
@@ -16,11 +10,6 @@ const Limites = () => {
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
   const anoAtual = new Date().getFullYear();
-<<<<<<< HEAD
-=======
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
   const [user, setUser] = useState(null);
   const [periodo, setPeriodo] = useState(`${meses[new Date().getMonth()]} ${anoAtual}`);
@@ -28,10 +17,7 @@ const Limites = () => {
   const [limitesCadastrados, setLimitesCadastrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-<<<<<<< HEAD
   const [alertas, setAlertas] = useState([]);
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
   const [formData, setFormData] = useState({
     categoria: '',
@@ -104,7 +90,6 @@ const Limites = () => {
       const mergedData = limitsArray.map(lim => ({
         ...lim,
         gastoReal: gastosMap[lim.categoria] || 0,
-<<<<<<< HEAD
         diferenca: Number(lim.valor) - (gastosMap[lim.categoria] || 0),
         percentual: lim.valor > 0 ? Math.round(((gastosMap[lim.categoria] || 0) / lim.valor) * 100) : 0,
       }));
@@ -128,13 +113,6 @@ const Limites = () => {
       });
       setAlertas(novosAlertas);
 
-=======
-        diferenca: Number(lim.valor) - (gastosMap[lim.categoria] || 0)
-      }));
-
-      setLimitesCadastrados(mergedData);
-      renderChart(mergedData);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     } catch (error) {
       console.error("Erro ao carregar limites:", error);
     } finally {
@@ -146,35 +124,6 @@ const Limites = () => {
     fetchData();
   }, [user, periodo]);
 
-<<<<<<< HEAD
-=======
-  const renderChart = (data) => {
-    if (!chartRef.current) return;
-    if (chartInstance.current) chartInstance.current.destroy();
-
-    const ctx = chartRef.current.getContext('2d');
-    chartInstance.current = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.map(d => d.categoria),
-        datasets: [
-          { label: 'Limite Definido', data: data.map(d => d.valor), backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: '#9ca3af', borderWidth: 1 },
-          { label: 'Gasto Real', data: data.map(d => d.gastoReal), backgroundColor: '#ef4444', borderRadius: 4 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9ca3af', font: { size: 10 } } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 9 } } },
-          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 9 } } }
-        }
-      }
-    });
-  };
-
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -208,7 +157,6 @@ const Limites = () => {
   };
 
   const handleDelete = async (id) => {
-<<<<<<< HEAD
     const confirmed = await confirm({
       title: 'Excluir Limite',
       message: 'Deseja excluir este limite?',
@@ -281,48 +229,16 @@ const Limites = () => {
         <div className="border-l-4 border-orange-500 pl-4">
           <h2 className="text-white font-bold text-2xl">Limites de Gastos</h2>
           <p className="text-gray-400 text-sm">Controle suas metas por categoria</p>
-=======
-    if (window.confirm("Deseja excluir este limite?")) {
-      try {
-        const limiteDocRef = doc(db, "limites", user.uid);
-        const limiteSnap = await getDoc(limiteDocRef);
-        
-        if (limiteSnap.exists()) {
-          const currentCategorias = limiteSnap.data().categorias || {};
-          delete currentCategorias[id]; // 'id' aqui é o nome da categoria
-          
-          await setDoc(limiteDocRef, { categorias: currentCategorias }, { merge: true });
-          fetchData();
-        }
-      } catch (error) {
-        console.error("Erro ao deletar limite:", error);
-      }
-    }
-  };
-
-  return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Header e Filtro de Período */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div className="border-l-4 border-red-600 pl-4">
-          <h2 className="text-white font-black italic uppercase tracking-tighter text-3xl">Limites por Categoria</h2>
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em]">Controle de Gastos e Metas</p>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         </div>
         <select 
           value={periodo} 
           onChange={(e) => setPeriodo(e.target.value)}
-<<<<<<< HEAD
           className="bg-[#14191e] border border-white/10 text-white font-bold text-sm rounded-lg px-4 py-2 outline-none focus:border-orange-500 transition-all"
-=======
-          className="bg-[#14191e] border border-white/10 text-white font-bold text-xs rounded-lg px-4 py-2 outline-none focus:border-red-600 transition-all"
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         >
           {meses.map(m => <option key={m} value={`${m} ${anoAtual}`}>{m} {anoAtual}</option>)}
         </select>
       </div>
 
-<<<<<<< HEAD
       {/* Alertas */}
       {alertas.length > 0 && (
         <div className="space-y-2">
@@ -337,35 +253,22 @@ const Limites = () => {
         </div>
       )}
 
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       {/* Formulário de Definição de Limite */}
       <div className="bg-[#14191e] border border-white/5 p-8 rounded-3xl shadow-2xl">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-2">
-<<<<<<< HEAD
             <label className="text-gray-400 text-xs font-semibold">Categoria de Despesa <span className="text-red-500">*</span></label>
             <select 
               className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-500 outline-none transition-all" 
-=======
-            <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Categoria de Despesa</label>
-            <select 
-              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-red-600 outline-none transition-all" 
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
               value={formData.categoria}
               onChange={(e) => setFormData({...formData, categoria: e.target.value})}
               required
             >
-<<<<<<< HEAD
               <option value="">Selecione...</option>
-=======
-              <option value="" className="bg-black">Selecione...</option>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
               {categorias.map(cat => <option key={cat} value={cat} className="bg-black">{cat}</option>)}
             </select>
           </div>
           <div className="space-y-2">
-<<<<<<< HEAD
             <label className="text-gray-400 text-xs font-semibold">Definir Limite Mensal <span className="text-red-500">*</span></label>
             <input type="number" step="0.01" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-500 outline-none transition-all" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} required />
           </div>
@@ -373,21 +276,11 @@ const Limites = () => {
             {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({categoria:'', valor:''})}} className="flex-1 text-gray-400 text-xs font-bold uppercase hover:text-white transition-all">Cancelar</button>}
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs tracking-widest h-[46px] rounded-xl transition-all shadow-lg shadow-blue-600/20">
               {editingId ? 'Atualizar Limite' : 'Salvar Limite'}
-=======
-            <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Definir Limite Mensal</label>
-            <input type="number" step="0.01" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-red-600 outline-none transition-all" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} required />
-          </div>
-          <div className="flex items-end gap-2">
-            {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({categoria:'', valor:''})}} className="flex-1 text-gray-500 text-[10px] font-bold uppercase hover:text-white transition-all">Cancelar</button>}
-            <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] tracking-widest h-[46px] rounded-xl transition-all shadow-lg shadow-red-600/20">
-              {editingId ? 'Atualizar Limite' : 'Gravar Limite'}
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             </button>
           </div>
         </form>
       </div>
 
-<<<<<<< HEAD
       {/* Barras de Progresso */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {limitesCadastrados.map(item => (
@@ -408,56 +301,31 @@ const Limites = () => {
             </div>
           </div>
         ))}
-=======
-      {/* Gráfico Comparativo */}
-      <div className="bg-[#14191e] border border-white/5 rounded-3xl p-6 shadow-2xl">
-        <h3 className="text-white font-bold uppercase text-[11px] tracking-widest mb-6 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-red-600"></span>
-          Comparativo: Limite vs Gasto Real
-        </h3>
-        <div className="min-h-[250px]">
-          <canvas ref={chartRef}></canvas>
-        </div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       </div>
 
       {/* Tabela de Relatório */}
       <div className="bg-[#14191e] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-400">
-<<<<<<< HEAD
             <thead className="text-xs uppercase font-bold text-gray-500 bg-black/20">
-=======
-            <thead className="text-[10px] uppercase tracking-widest font-black text-gray-500 bg-black/20">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
               <tr>
                 <th className="px-6 py-4">Categoria</th>
                 <th className="px-6 py-4">Meta (R$)</th>
                 <th className="px-6 py-4">Gasto Real</th>
-<<<<<<< HEAD
                 <th className="px-6 py-4">Disponível</th>
                 <th className="px-6 py-4">Uso</th>
-=======
-                <th className="px-6 py-4">Diferença</th>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 <th className="px-6 py-4 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-<<<<<<< HEAD
               {limitesCadastrados.map((item) => (
                 <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-=======
-              {limitesCadastrados.map((item, index) => (
-                <tr key={index} className="hover:bg-white/[0.02] transition-colors">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                   <td className="px-6 py-4 font-bold text-gray-300">{item.categoria}</td>
                   <td className="px-6 py-4 text-white">R$ {Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-gray-400">R$ {item.gastoReal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className={`px-6 py-4 font-bold ${item.diferenca < 0 ? 'text-red-500' : 'text-green-500'}`}>
                     R$ {item.diferenca.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
-<<<<<<< HEAD
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden">
@@ -472,14 +340,6 @@ const Limites = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
                       <button onClick={() => handleDelete(item.id)} className="hover:text-orange-500 transition-colors">
-=======
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex justify-center gap-4 text-gray-500">
-                      <button onClick={() => handleEdit(item)} className="hover:text-red-500 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="hover:text-red-500 transition-colors">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                       </button>
                     </div>
@@ -488,11 +348,7 @@ const Limites = () => {
               ))}
               {limitesCadastrados.length === 0 && (
                 <tr>
-<<<<<<< HEAD
                   <td colSpan="6" className="px-6 py-10 text-center text-gray-500 text-sm">Nenhum limite definido para este período.</td>
-=======
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-600 font-black uppercase text-[10px]">Nenhum limite definido.</td>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 </tr>
               )}
             </tbody>

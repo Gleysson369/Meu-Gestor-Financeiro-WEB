@@ -119,9 +119,8 @@ const Receita = () => {
     if (user) {
       fetchReceitas();
       fetchCategorias();
-  }, [periodo, user]); // eslint-disable-line react-hooks/exhaustive-deps
     }
-  }, [periodo, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [periodo, user]);
 
   // 3. Salvar ou Atualizar
   const handleSubmit = async (e) => {
@@ -278,8 +277,25 @@ const Receita = () => {
               required 
             />
           </div>
+          
+          <div className="lg:col-span-3 space-y-2">
+            <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Observação (Opcional)</label>
+            <textarea
+              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all"
+              value={formData.observacao}
+              onChange={(e) => setFormData({...formData, observacao: e.target.value})}
+              rows="1"
+              placeholder="Detalhes adicionais sobre esta receita..."
+            ></textarea>
+          </div>
 
-          <div className="lg:col-span-4 flex justify-end gap-4 mt-2">
+          <div className="lg:col-span-4 flex items-center justify-between gap-4 mt-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" checked={formData.recorrente} onChange={(e) => setFormData({...formData, recorrente: e.target.checked})} className="w-4 h-4 rounded border-white/20 bg-black/20 text-green-600 focus:ring-green-600/50 accent-green-600" />
+              <span className="text-xs font-semibold text-gray-400 group-hover:text-white">Repetir esta receita mensalmente</span>
+            </label>
+
+            <div className="flex gap-4">
             {editingId && (
               <button 
                 type="button" 
@@ -292,6 +308,7 @@ const Receita = () => {
             <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest px-10 py-3 rounded-xl transition-all shadow-lg shadow-green-600/20">
               {editingId ? 'Salvar Alterações' : 'Adicionar Renda'}
             </button>
+            </div>
           </div>
         </form>
       </div>
@@ -324,7 +341,7 @@ const Receita = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">              
-              {receitas.map((item) => (
+              {sortedAndFilteredReceitas.map((item) => (
                 <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">{new Date(item.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>                  
                   <td className="px-6 py-4 font-bold text-white">{item.descricao}</td>
@@ -344,7 +361,7 @@ const Receita = () => {
                   </td>
                 </tr>
               ))}
-              {receitas.length === 0 && (
+              {sortedAndFilteredReceitas.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-6 py-10 text-center text-gray-600 uppercase font-black text-xs">Nenhum registro encontrado para este mês.</td>
                 </tr>
