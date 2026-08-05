@@ -23,34 +23,31 @@ export function buildBuySellComparison(
     metric = 'value', // 'value' | 'quantity'
   } = {}
 ) {
-  const aggregatedData = {};
-
   const startDateTime = startDate ? new Date(startDate + 'T00:00:00').getTime() : -Infinity;
   const endDateTime = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity;
 
-  movements.forEach((mov) => {
+  const aggregatedData = movements.reduce((acc, mov) => {
     const movementDate = new Date(mov.data + 'T00:00:00').getTime();
     if (movementDate < startDateTime || movementDate > endDateTime) {
-      return; // Skip movements outside the selected period
+      return acc;
     }
 
     const codigo = normalizeAssetSymbol(mov.ativo);
-    if (!codigo) return;
+    if (!codigo) return acc;
 
     const tipo = normalizeMovementType(mov.tipoMovimentacao);
-    if (tipo !== 'COMPRA' && tipo !== 'VENDA') return; // Only consider buys and sells
+    if (tipo !== 'COMPRA' && tipo !== 'VENDA') return acc;
 
     const quantidade = Number(mov.quantidade || 0);
-    const precoUnitario = Number(mov.precoUnitario || 0);
-    const taxas = Number(mov.taxas || 0);
-
-    if (quantidade <= 0 && precoUnitario <= 0 && taxas <= 0) return; // Ignore invalid movements
+    if (quantidade <= 0) return acc;
 
     const key = grouping === 'asset' ? codigo : getMonthKey(mov.data);
-    if (!aggregatedData[key]) {
-      aggregatedData[key] = {
-        codigo: codigo, // For asset grouping
-        periodo: key, // For monthly grouping
+    if (!key) return acc;
+
+    if (!acc[key]) {
+      acc[key] = {
+        codigo: grouping === 'asset' ? key : null,
+        periodo: grouping === 'monthly' ? key : null,
         label: grouping === 'monthly' ? getMonthLabel(key) : codigo,
         compras: 0,
         vendas: 0,
@@ -58,48 +55,47 @@ export function buildBuySellComparison(
         quantidadeVendida: 0,
         taxasCompra: 0,
         taxasVenda: 0,
-        fluxoLiquido: 0,
       };
     }
 
-    const item = aggregatedData[key];
+    const item = acc[key];
+    const precoUnitario = Number(mov.precoUnitario || 0);
+    const taxas = Number(mov.taxas || 0);
+    const value = quantidade * precoUnitario;
 
     if (tipo === 'COMPRA') {
-      item.compras += (quantidade * precoUnitario) + taxas;
+      item.compras += value + taxas;
       item.quantidadeComprada += quantidade;
       item.taxasCompra += taxas;
     } else if (tipo === 'VENDA') {
-      item.vendas += (quantidade * precoUnitario) - taxas;
+      item.vendas += value - taxas;
       item.quantidadeVendida += quantidade;
       item.taxasVenda += taxas;
     }
-  });
+    return acc;
+  }, {});
 
   const result = Object.values(aggregatedData).map((item) => {
-    item.fluxoLiquido = item.vendas - item.compras;
-    return item;
+    if (metric === 'value') {
+      return { ...item, fluxoLiquido: item.vendas - item.compras };
+    }
+    // metric === 'quantity'
+    return {
+      ...item,
+      compras: item.quantidadeComprada,
+      vendas: item.quantidadeVendida,
+      fluxoLiquido: 0,
+      taxasCompra: 0,
+      taxasVenda: 0,
+    };
   });
 
   // Sort results
   if (grouping === 'asset') {
-    result.sort((a, b) => a.codigo.localeCompare(b.codigo));
+    result.sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   } else { // monthly
-    result.sort((a, b) => {
-      const dateA = new Date(a.periodo + '-01');
-      const dateB = new Date(b.periodo + '-01');
-      return dateA.getTime() - dateB.getTime();
-    });
+    result.sort((a, b) => (a.periodo || '').localeCompare(b.periodo || ''));
   }
 
-  // Apply metric
-  return result.map(item => ({
-    ...item,
-    compras: metric === 'value' ? item.compras : item.quantidadeComprada,
-    vendas: metric === 'value' ? item.vendas : item.quantidadeVendida,
-    // For quantity metric, fluxoLiquido, taxasCompra, taxasVenda are not directly applicable in the same way,
-    // but we keep them for consistency in the data structure, they will be 0 or not used in display.
-    fluxoLiquido: metric === 'value' ? item.fluxoLiquido : 0,
-    taxasCompra: metric === 'value' ? item.taxasCompra : 0,
-    taxasVenda: metric === 'value' ? item.taxasVenda : 0,
-  }));
+  return result;
 }

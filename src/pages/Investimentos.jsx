@@ -5,7 +5,8 @@ import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, g
 import { onAuthStateChanged } from 'firebase/auth';
 import Chart from 'chart.js/auto';
 import { useNotification } from '../components/NotificationProvider.jsx';
-import { consolidarCarteira, buildSummary, formatCurrency, formatPercentage, toIsoDate, normalizeAssetSymbol, normalizeMovementType, getMovementFinalValue, buildBuySellComparison } from '../services/investmentCalculations';
+import { consolidarCarteira, buildSummary, formatCurrency, formatPercentage, toIsoDate, normalizeAssetSymbol, normalizeMovementType, getMovementFinalValue } from '../services/investmentCalculations';
+import { buildBuySellComparison } from '../services/investmentAnalyticsService.js';
 import { buildHomeTips } from '../services/financialTipsService';
 
 const ASSET_TYPES = ['Ação', 'FII', 'ETF'];
@@ -632,7 +633,7 @@ const Investimentos = () => {
     setEditingMovementId(item.id); // Use item.id from the raw movement
     setMovementForm({
       tipoAtivo: item.tipoAtivo || 'Ação',
-      ativo: item.codigo,
+      ativo: item.ativo,
       nomeAtivo: item.nomeAtivo || '',
       tipoMovimentacao: item.tipoMovimentacao,
       data: item.data || toIsoDate(new Date()),
@@ -914,6 +915,41 @@ const Investimentos = () => {
         if (endDate && provDate > endDate) return false;
       }
       return true;
+    });
+
+    if (proventFilters.search) {
+      const searchTerm = normalizeAssetSymbol(proventFilters.search);
+      filtered = filtered.filter(prov => normalizeAssetSymbol(prov.ativo).includes(searchTerm));
+    }
+    if (proventFilters.type !== 'all') {
+      filtered = filtered.filter(prov => prov.tipoProvento === proventFilters.type);
+    }
+    if (proventFilters.minAmount) {
+      const min = Number(proventFilters.minAmount);
+      if (!isNaN(min)) {
+        filtered = filtered.filter(prov => Number(prov.valorTotal || 0) >= min);
+      }
+    }
+    if (proventFilters.maxAmount) {
+      const max = Number(proventFilters.maxAmount);
+      if (!isNaN(max)) {
+        filtered = filtered.filter(prov => Number(prov.valorTotal || 0) <= max);
+      }
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      switch (proventFilters.sortBy) {
+        case 'oldest': return new Date(a.dataPagamento) - new Date(b.dataPagamento);
+        case 'valueDesc': return Number(b.valorTotal || 0) - Number(a.valorTotal || 0);
+        case 'valueAsc': return Number(a.valorTotal || 0) - Number(b.valorTotal || 0);
+        case 'codeAsc': return a.ativo.localeCompare(b.ativo);
+        case 'codeDesc': return b.ativo.localeCompare(a.ativo);
+        case 'qtyDesc': return Number(b.valorPorUnidade || 0) - Number(a.valorPorUnidade || 0);
+        case 'qtyAsc': return Number(a.valorPorUnidade || 0) - Number(b.valorPorUnidade || 0);
+        case 'recent':
+        default: return new Date(b.dataPagamento) - new Date(a.dataPagamento);
+      }
     });
 
     return filtered;
