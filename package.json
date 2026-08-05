@@ -6,10 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-<<<<<<< HEAD
     "test": "node --test ./src/services/investmentCalculations.test.js",
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -25,10 +22,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
-<<<<<<< HEAD
     "concurrently": "^8.2.0",
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     "eslint": "^8.57.0",
     "tailwindcss": "^4.3.0",
     "vite": "^6.0.0"

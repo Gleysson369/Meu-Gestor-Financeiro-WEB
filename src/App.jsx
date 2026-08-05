@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
 import { auth } from './services/firebase';
 import { signOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
-<<<<<<< HEAD
-import { useNotification } from './components/NotificationProvider.jsx';
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 import Home from './pages/Home';
 import Despesas from './pages/Despesas';
 import Receita from './pages/Receita';
@@ -13,10 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Orcamento from './pages/Limites';
 import Reserva from './pages/Reserva';
-<<<<<<< HEAD
 import Investimentos from './pages/Investimentos';
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 import Dividas from './pages/Dividas';
 import Configuracoes from './pages/Configuracoes';
 import FluxoDeCaixa from './pages/Saldo';
@@ -24,7 +17,6 @@ import { Footer } from './components/Footer/Footer';
 import logo from './assets/img/marca-01.png';
 
 const NAV_ITEMS = [
-<<<<<<< HEAD
   { name: 'Inicio', path: '/', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
   { name: 'Receitas', path: '/receita', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> },
   { name: 'Despesas', path: '/despesas', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> },
@@ -34,16 +26,6 @@ const NAV_ITEMS = [
   { name: 'Investimentos', path: '/investimentos', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19h16"/><path d="M6 15l3-3 4 4 5-5 3 3"/><path d="M5 11h3"/><path d="M10 7h3"/><path d="M16 3h3"/></svg> },
   { name: 'Dívidas', path: '/dividas', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.5 6.5c-2.5-1-5.5-1-8 0V12c0 5 3.5 7.5 8 9.5.5-2 1.5-3.5 3-5 .5-.5 1-1 1.5-1.5-1-1.5-1-3.5-1-5V6.5z"/><path d="M18.5 12.5c0-2.5.5-5.5-1.5-8"/><path d="M20 18c-2-1-3.5-2.5-5-4.5"/></svg> },
   { name: 'Configurações', path: '/configuracoes', icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> },
-=======
-  { name: 'Inicio', path: '/' },
-  { name: 'Receita', path: '/receita' },
-  { name: 'Despesas', path: '/despesas' },
-  { name: 'Fluxo de Caixa', path: '/fluxo-de-caixa' },
-  { name: 'Limites', path: '/orcamento' },
-  { name: 'Reserva', path: '/reserva' },
-  { name: 'Dívidas', path: '/dividas' },
-  { name: 'Ajustes', path: '/configuracoes' },
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 ];
 
 const Navbar = () => {
@@ -63,7 +45,6 @@ const Navbar = () => {
   };
 
   return (
-<<<<<<< HEAD
     <header className="bg-background-secondary/80 backdrop-blur-md sticky top-0 z-40 border-b border-border">
       <nav className="w-full mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex justify-between items-center">
         <div className="flex items-center">
@@ -72,24 +53,10 @@ const Navbar = () => {
 
         <div className="hidden lg:flex items-center gap-1">
           <ul className="flex items-center gap-1">
-=======
-    <header className="bg-[#14191e]/80 backdrop-blur-md sticky top-0 z-40 border-b border-white/5">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex justify-between items-center">
-        <div className="flex flex-col items-center leading-tight">
-          <img src={logo} alt="logo" className="h-8 w-auto" />
-          <h1 className="text-white font-black italic tracking-tighter text-[10px] uppercase hidden sm:block text-center">
-            Meu Gestor Financeiro WEB
-          </h1>
-        </div>
-
-        <div className="hidden md:flex items-center gap-1">
-          <ul className="flex items-center gap-2">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             {NAV_ITEMS.map((item) => (
               <li key={item.path}>
                 <Link 
                   to={item.path} 
-<<<<<<< HEAD
                   className={`flex items-center gap-2 px-4 h-10 rounded-lg transition-all duration-200 font-semibold text-sm ${
                     location.pathname === item.path 
                     ? 'bg-primary text-white' 
@@ -98,14 +65,6 @@ const Navbar = () => {
                   aria-current={location.pathname === item.path ? 'page' : undefined}
                 >
                   {item.icon}
-=======
-                  className={`px-4 py-2 rounded-lg transition-all font-bold uppercase text-[11px] tracking-widest ${
-                    location.pathname === item.path 
-                    ? 'text-white bg-white/10' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                   {item.name}
                 </Link>
               </li>
@@ -113,7 +72,6 @@ const Navbar = () => {
           </ul>
         </div>
 
-<<<<<<< HEAD
         <div className="flex items-center gap-2">
           <button 
             onClick={handleLogout}
@@ -122,16 +80,6 @@ const Navbar = () => {
             Sair
           </button>
           <button onClick={toggleMenu} className="lg:hidden text-text-secondary hover:text-text-primary p-2">
-=======
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={handleLogout}
-            className="hidden md:block bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all"
-          >
-            Sair
-          </button>
-          <button onClick={toggleMenu} className="md:hidden text-gray-400 hover:text-white p-2">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/>
             </svg>
@@ -140,18 +88,13 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Menu */}
-<<<<<<< HEAD
       <div className={`lg:hidden absolute top-[72px] left-0 w-full bg-background-secondary border-b border-border transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-=======
-      <div className={`md:hidden absolute top-20 left-0 w-full bg-[#14191e] border-b border-white/5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         <ul className="p-4 space-y-2">
           {NAV_ITEMS.map((item) => (
             <li key={item.path}>
               <Link 
                 onClick={toggleMenu} 
                 to={item.path} 
-<<<<<<< HEAD
                 className={`flex items-center gap-4 p-4 rounded-xl font-semibold text-base ${
                   location.pathname === item.path 
                   ? 'bg-primary/10 text-primary' 
@@ -159,25 +102,12 @@ const Navbar = () => {
                 }`}
               >
                 {item.icon}
-=======
-                className={`block p-4 rounded-xl font-bold uppercase text-xs tracking-widest ${
-                  location.pathname === item.path 
-                  ? 'text-white bg-white/10' 
-                  : 'text-gray-400 hover:bg-white/5'
-                }`}
-              >
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 {item.name}
               </Link>
             </li>
           ))}
-<<<<<<< HEAD
           <li className="pt-4 border-t border-border">
             <button onClick={handleLogout} className="w-full bg-danger text-white p-4 rounded-xl font-bold text-center uppercase">Sair</button>
-=======
-          <li className="pt-4 border-t border-white/5">
-            <button onClick={handleLogout} className="block w-full bg-red-600 text-white p-4 rounded-xl font-bold text-center">Sair</button>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </li>
         </ul>
       </div>
@@ -186,7 +116,6 @@ const Navbar = () => {
 };
 
 const ProtectedRoute = ({ user, loading, children }) => {
-<<<<<<< HEAD
   const { notify } = useNotification();
 
   if (loading) {
@@ -194,13 +123,6 @@ const ProtectedRoute = ({ user, loading, children }) => {
       <div className="min-h-screen bg-background-primary flex flex-col items-center justify-center gap-4">
         <img src={logo} alt="Carregando..." className="h-12 w-auto animate-pulse opacity-50" />
         <div className="text-text-primary font-bold uppercase text-xs tracking-widest animate-pulse">Validando Sessão...</div>
-=======
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <img src={logo} alt="Carregando..." className="h-12 w-auto animate-pulse opacity-50" />
-        <div className="text-white font-black uppercase text-[10px] tracking-widest animate-pulse">Validando Sessão...</div>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       </div>
     );
   }
@@ -216,11 +138,7 @@ const ProtectedRoute = ({ user, loading, children }) => {
         if (auth.currentUser.emailVerified) {
           window.location.reload(); // Recarrega para atualizar o estado do React
         } else {
-<<<<<<< HEAD
           notify('O e-mail ainda não foi verificado. Por favor, clique no link enviado para ' + user.email, 'warning');
-=======
-          alert('O e-mail ainda não foi verificado. Por favor, clique no link enviado para ' + user.email);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         }
       } catch (err) {
         console.error(err);
@@ -230,20 +148,13 @@ const ProtectedRoute = ({ user, loading, children }) => {
     const handleResend = async () => {
       try {
         await sendEmailVerification(auth.currentUser);
-<<<<<<< HEAD
         notify('Novo e-mail de verificação enviado!', 'success');
       } catch (err) {
         notify('Aguarde um momento antes de tentar reenviar.', 'warning');
-=======
-        alert('Novo e-mail de verificação enviado!');
-      } catch (err) {
-        alert('Aguarde um momento antes de tentar reenviar.');
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       }
     };
 
     return (
-<<<<<<< HEAD
       <div className="min-h-screen bg-background-primary flex items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-6">
           <div className="w-20 h-20 bg-warning/10 text-warning rounded-full flex items-center justify-center mx-auto mb-4 border border-warning/20 animate-pulse">
@@ -257,21 +168,6 @@ const ProtectedRoute = ({ user, loading, children }) => {
             <button onClick={handleCheckVerification} className="w-full bg-primary text-white font-bold uppercase text-xs tracking-widest py-4 rounded-xl hover:bg-primary-hover transition-all">Já verifiquei, entrar agora</button>
             <button onClick={handleResend} className="text-warning font-bold text-xs uppercase tracking-widest hover:underline">Reenviar link de confirmação</button>
             <button onClick={() => signOut(auth)} className="text-danger font-bold text-xs uppercase tracking-widest mt-4">Sair da conta</button>
-=======
-      <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
-        <div className="max-w-md space-y-6">
-          <div className="w-20 h-20 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20 animate-pulse">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>
-          </div>
-          <h2 className="text-white text-2xl font-black uppercase italic">Verifique seu E-mail</h2>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            Para acessar seu gestor financeiro, você precisa confirmar seu endereço de e-mail <b>({user.email})</b>. Verifique sua caixa de entrada e spam.
-          </p>
-          <div className="flex flex-col gap-3">
-            <button onClick={handleCheckVerification} className="w-full bg-white text-black font-black uppercase text-[10px] tracking-widest py-4 rounded-xl hover:bg-gray-200 transition-all">Já verifiquei, entrar agora</button>
-            <button onClick={handleResend} className="text-yellow-500 font-bold text-[10px] uppercase tracking-widest hover:underline">Reenviar link de confirmação</button>
-            <button onClick={() => signOut(auth)} className="text-red-600 font-bold text-[10px] uppercase tracking-widest mt-4">Sair da conta</button>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </div>
         </div>
       </div>
@@ -285,7 +181,6 @@ const PageLayout = () => {
   const location = useLocation();
   // Não mostrar footer nas páginas com bottom nav se preferir, ou manter ambos
   return (
-<<<<<<< HEAD
     <div className="min-h-screen flex flex-col bg-background-primary text-text-primary">
       <Navbar />
       <main className="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -293,15 +188,6 @@ const PageLayout = () => {
       </main>
       
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
-=======
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <Outlet />
-      </main>
-      
-      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mb-4">
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         <Footer />
       </div>
     </div>
@@ -341,10 +227,7 @@ function App() {
           <Route path="/fluxo-de-caixa" element={<FluxoDeCaixa />} />
           <Route path="/orcamento" element={<Orcamento />} />
           <Route path="/reserva" element={<Reserva />} />
-<<<<<<< HEAD
           <Route path="/investimentos" element={<Investimentos />} />
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           <Route path="/dividas" element={<Dividas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
         </Route>

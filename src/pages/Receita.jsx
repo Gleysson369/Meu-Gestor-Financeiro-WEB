@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, orderBy, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-<<<<<<< HEAD
 import { useNotification } from '../components/NotificationProvider.jsx';
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
 
 const Receita = () => {
   const meses = [
@@ -22,19 +19,15 @@ const Receita = () => {
   const [periodo, setPeriodo] = useState(`${meses[new Date().getMonth()]} ${anoAtual}`);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
   const [sortConfig, setSortConfig] = useState({ key: 'data', direction: 'desc' });
   const { notify, confirm } = useNotification();
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   
   const [formData, setFormData] = useState({
     descricao: '',
     categoria: '',
     data: getToday(),
-<<<<<<< HEAD
     valor: '',
     observacao: '',
     recorrente: false,
@@ -44,12 +37,6 @@ const Receita = () => {
     setFormData({ descricao: '', categoria: '', data: getToday(), valor: '', observacao: '', recorrente: false });
     setEditingId(null);
   };
-
-=======
-    valor: ''
-  });
-
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   // 1. Buscar Categorias cadastradas no Firebase
   const fetchCategorias = async () => {
     if (!user) return;
@@ -132,12 +119,9 @@ const Receita = () => {
     if (user) {
       fetchReceitas();
       fetchCategorias();
-    }
-<<<<<<< HEAD
   }, [periodo, user]); // eslint-disable-line react-hooks/exhaustive-deps
-=======
-  }, [periodo, user]);
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
+    }
+  }, [periodo, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 3. Salvar ou Atualizar
   const handleSubmit = async (e) => {
@@ -147,18 +131,13 @@ const Receita = () => {
         ...formData,
         valor: parseFloat(formData.valor),
         userId: user.uid,
-<<<<<<< HEAD
         updatedAt: new Date(),
         recorrente: formData.recorrente || false,
         observacao: formData.observacao || ''
-=======
-        updatedAt: new Date()
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       };
 
       if (editingId) {
         await updateDoc(doc(db, "rendas", editingId), payload);
-<<<<<<< HEAD
         notify('Receita atualizada com sucesso!', 'success');
       } else {
         await addDoc(collection(db, "rendas"), { ...payload, createdAt: new Date() });
@@ -166,14 +145,6 @@ const Receita = () => {
       }
 
       resetForm();
-=======
-        setEditingId(null);
-      } else {
-        await addDoc(collection(db, "rendas"), { ...payload, createdAt: new Date() });
-      }
-
-      setFormData({ descricao: '', categoria: '', data: getToday(), valor: '' });
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
       fetchReceitas();
     } catch (error) {
       console.error("Erro ao salvar:", error);
@@ -186,18 +157,13 @@ const Receita = () => {
       descricao: item.descricao,
       categoria: item.categoria,
       data: item.data,
-<<<<<<< HEAD
       valor: item.valor,
       observacao: item.observacao || '',
       recorrente: item.recorrente || false,
-=======
-      valor: item.valor
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-<<<<<<< HEAD
   const handleDuplicate = (item) => {
     setEditingId(null); // Garante que não está em modo de edição
     setFormData({
@@ -223,18 +189,9 @@ const Receita = () => {
     if (!confirmed) return;
     await deleteDoc(doc(db, "rendas", id));
     fetchReceitas();
-=======
-  const handleDelete = async (id) => {
-    if (window.confirm("Deseja excluir esta receita?")) {
-      await deleteDoc(doc(db, "rendas", id));
-      fetchReceitas();
-    }
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
   };
 
   const totalMensal = receitas.reduce((acc, curr) => acc + Number(curr.valor), 0);
-
-<<<<<<< HEAD
   const sortedAndFilteredReceitas = [...receitas]
     .filter(item => {
       const searchMatch = item.descricao.toLowerCase().includes(searchTerm.toLowerCase());
@@ -262,18 +219,6 @@ const Receita = () => {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Header e Saldo Total */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="border-l-4 border-green-500 pl-4">
-          <h2 className="text-white font-bold text-2xl">Receitas</h2>
-          <p className="text-gray-400 text-sm">Gestão de Entradas</p>
-        </div>
-        
-        <div className="bg-[#14191e] border border-green-500/20 px-8 py-4 rounded-2xl shadow-2xl flex flex-col items-end">
-          <p className="text-green-500/50 text-xs font-bold uppercase tracking-widest mb-1">Renda Total do Mês</p>
-=======
-  return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Header e Saldo Total */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="border-l-4 border-green-500 pl-4">
           <h2 className="text-white font-black italic uppercase tracking-tighter text-3xl">Receitas</h2>
@@ -282,7 +227,6 @@ const Receita = () => {
         
         <div className="bg-[#14191e] border border-green-500/20 px-8 py-4 rounded-2xl shadow-2xl flex flex-col items-end">
           <p className="text-green-500/50 text-[10px] font-black uppercase tracking-widest mb-1">Renda Total do Mês</p>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           <h3 className="text-3xl font-black text-green-500">
             R$ {totalMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </h3>
@@ -291,30 +235,14 @@ const Receita = () => {
 
       {/* Formulário de Cadastro/Edição */}
       <div className="bg-[#14191e] border border-white/5 p-8 rounded-3xl shadow-2xl">
-<<<<<<< HEAD
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <label className="text-gray-400 text-xs font-semibold">Descrição <span className="text-red-500">*</span></label>
-=======
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="space-y-2">
             <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Descrição</label>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
-            <input 
-              type="text" 
-              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all"
-              value={formData.descricao} 
-              onChange={(e) => setFormData({...formData, descricao: e.target.value})} 
-              required 
-            />
+            <input type="text" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all" value={formData.descricao} onChange={(e) => setFormData({...formData, descricao: e.target.value})} required />
           </div>
           
           <div className="space-y-2">
-<<<<<<< HEAD
-            <label className="text-gray-400 text-xs font-semibold">Categoria <span className="text-red-500">*</span></label>
-=======
             <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Categoria</label>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             <select 
               className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all"
               value={formData.categoria} 
@@ -327,11 +255,7 @@ const Receita = () => {
           </div>
 
           <div className="space-y-2">
-<<<<<<< HEAD
-            <label className="text-gray-400 text-xs font-semibold">Data <span className="text-red-500">*</span></label>
-=======
             <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Data</label>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             <input 
               type="date" 
               className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm [color-scheme:dark] focus:border-green-500 outline-none transition-all cursor-pointer"
@@ -342,99 +266,39 @@ const Receita = () => {
             />
           </div>
 
-<<<<<<< HEAD
-          <div className="space-y-2 lg:col-span-3">
-            <label className="text-gray-400 text-xs font-semibold">Valor <span className="text-red-500">*</span></label>
-=======
           <div className="space-y-2">
             <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Valor</label>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
             <input 
               type="number" 
               step="0.01"
               className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all"
               value={formData.valor} 
               onChange={(e) => setFormData({...formData, valor: e.target.value})} 
-<<<<<<< HEAD
               min="0.01"
-=======
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
               required 
             />
           </div>
 
-<<<<<<< HEAD
-          <div className="space-y-2 lg:col-span-3">
-            <label className="text-gray-400 text-xs font-semibold">Observação (Opcional)</label>
-            <textarea
-              className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-green-500 outline-none transition-all"
-              value={formData.observacao}
-              onChange={(e) => setFormData({...formData, observacao: e.target.value})}
-              rows="2"
-              placeholder="Detalhes adicionais sobre esta receita..."
-            ></textarea>
-          </div>
-
-          <div className="lg:col-span-3 flex items-center justify-between gap-4 mt-2">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input type="checkbox" checked={formData.recorrente} onChange={(e) => setFormData({...formData, recorrente: e.target.checked})} className="w-4 h-4 rounded border-white/20 bg-black/20 text-green-600 focus:ring-green-600/50 accent-green-600" />
-              <span className="text-xs font-semibold text-gray-300 group-hover:text-white">Repetir esta receita mensalmente</span>
-            </label>
-
-            <div className="flex gap-4">
-            {editingId && (
-              <button 
-                type="button" 
-                onClick={resetForm}
-                className="px-8 py-3 rounded-xl font-bold uppercase text-xs tracking-widest text-gray-400 hover:text-white transition-all"
-=======
           <div className="lg:col-span-4 flex justify-end gap-4 mt-2">
             {editingId && (
               <button 
                 type="button" 
-                onClick={() => { setEditingId(null); setFormData({descricao:'', categoria:'', data: getToday(), valor:''}) }}
+                onClick={resetForm}
                 className="px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest text-gray-400 hover:text-white transition-all"
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
               >
                 Cancelar
               </button>
             )}
-<<<<<<< HEAD
-              <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold uppercase text-xs tracking-widest px-10 py-3 rounded-xl transition-all shadow-lg shadow-green-600/20">
-                {editingId ? 'Salvar Alterações' : 'Adicionar Receita'}
-              </button>
-            </div>
-=======
             <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest px-10 py-3 rounded-xl transition-all shadow-lg shadow-green-600/20">
               {editingId ? 'Salvar Alterações' : 'Adicionar Renda'}
             </button>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
           </div>
         </form>
       </div>
 
       {/* Tabela de Histórico e Filtro */}
       <div className="bg-black border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-<<<<<<< HEAD
-        <div className="p-6 border-b border-white/10 bg-zinc-900/50 flex flex-col md:flex-row gap-4 justify-between items-center">
-          <h3 className="text-white font-semibold text-sm">Histórico de Recebimentos</h3>
-          
-          <div className="flex flex-wrap gap-3 w-full md:w-auto">
-            <input 
-              type="text"
-              placeholder="Buscar por descrição..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500 w-full md:w-auto"
-            />
-            <select 
-              value={categoryFilter} 
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500 w-full md:w-auto"
-            >
-              <option value="Todas">Todas as Categorias</option>
-              {categorias.map(cat => <option key={cat.id} value={cat.nome}>{cat.nome}</option>)}
-            </select>
+        <div className="p-6 border-b border-white/10 bg-zinc-900/50 flex justify-between items-center">          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest">Histórico de Recebimentos</h3>          
             <select 
               value={periodo} 
               onChange={(e) => setPeriodo(e.target.value)}
@@ -446,119 +310,43 @@ const Receita = () => {
                 </option>
               ))}
             </select>
-          </div>
-=======
-        <div className="p-6 border-b border-white/10 bg-zinc-900/50 flex justify-between items-center">
-          <h3 className="text-white font-bold uppercase text-[11px] tracking-widest">Histórico de Recebimentos</h3>
-          
-          <select 
-            value={periodo} 
-            onChange={(e) => setPeriodo(e.target.value)}
-            className="bg-black text-white font-bold text-xs outline-none cursor-pointer border border-white/20 rounded-lg px-3 py-1"
-          >
-            {meses.map((mes) => (
-              <option key={mes} className="bg-black" value={`${mes} ${anoAtual}`}>
-                {mes} {anoAtual}
-              </option>
-            ))}
-          </select>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-400">
-<<<<<<< HEAD
             <thead className="text-xs uppercase font-bold text-gray-400 bg-zinc-900">
               <tr>
                 <th className="px-6 py-4 cursor-pointer hover:text-white" onClick={() => requestSort('data')}>Data</th>
                 <th className="px-6 py-4">Descrição</th>
                 <th className="px-6 py-4 cursor-pointer hover:text-white" onClick={() => requestSort('categoria')}>Categoria</th>
                 <th className="px-6 py-4 cursor-pointer hover:text-white text-right" onClick={() => requestSort('valor')}>Valor</th>
-=======
-            <thead className="text-[10px] uppercase tracking-widest font-black text-gray-400 bg-zinc-900">
-              <tr>
-                <th className="px-6 py-4">Data</th>
-                <th className="px-6 py-4">Descrição</th>
-                <th className="px-6 py-4">Categoria</th>
-                <th className="px-6 py-4">Valor</th>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 <th className="px-6 py-4 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-<<<<<<< HEAD
-              {sortedAndFilteredReceitas.map((item) => (
-=======
+            <tbody className="divide-y divide-white/5">              
               {receitas.map((item) => (
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4 text-gray-300 font-medium">
-                    {new Date(item.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                  </td>
-<<<<<<< HEAD
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-white">{item.descricao}</p>
-                    {item.observacao && <p className="text-xs text-gray-500 italic mt-1">{item.observacao}</p>}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-500/10 text-blue-400 text-xs font-bold px-2 py-1 rounded-md uppercase">{item.categoria}</span>
-                  </td>
+                  <td className="px-6 py-4">{new Date(item.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>                  
+                  <td className="px-6 py-4 font-bold text-white">{item.descricao}</td>
+                  <td className="px-6 py-4"><span className="bg-blue-500/10 text-blue-400 text-xs font-bold px-2 py-1 rounded-md">{item.categoria}</span></td>
                   <td className="px-6 py-4 text-green-500 font-bold text-right">
                     R$ {Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => handleDuplicate(item)} className="p-2 text-gray-400 hover:text-green-500 transition-colors" title="Duplicar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                      </button>
+                    <div className="flex justify-center gap-4">
                       <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-blue-500 transition-colors" title="Editar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
                       <button onClick={() => handleDelete(item.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Excluir">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-=======
-                  <td className="px-6 py-4 font-bold text-white">{item.descricao}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-blue-500/10 text-blue-400 text-[9px] font-black px-2 py-1 rounded-md uppercase">{item.categoria}</span>
-                  </td>
-                  <td className="px-6 py-4 text-green-500 font-bold">
-                    R$ {Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center gap-4">
-                      <button 
-                        onClick={() => handleEdit(item)} 
-                        className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
-                        title="Editar"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(item.id)} 
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Excluir"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-<<<<<<< HEAD
-              {sortedAndFilteredReceitas.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-500 text-sm">
-                    <p>Nenhuma receita cadastrada em {periodo}.</p>
-                    <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-4 bg-green-600/20 text-green-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-600/40">
-                      Adicionar primeira receita
-                    </button>
-                  </td>
-=======
               {receitas.length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-6 py-10 text-center text-gray-600 uppercase font-black text-xs">Nenhum registro encontrado para este mês.</td>
->>>>>>> 4e8baa9fdfbe58b5f77bfcf2d800ec47e0e43867
                 </tr>
               )}
             </tbody>
