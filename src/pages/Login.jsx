@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import logo from '../assets/img/icon.png';
+import logo from '../assets/img/Icon.png';
 import { auth } from '../services/firebase';
 import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, sendPasswordResetEmail } from 'firebase/auth';
 import { useNotification } from '../components/NotificationProvider.jsx';
