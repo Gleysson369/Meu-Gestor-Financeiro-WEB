@@ -1,35 +1,32 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import Chart from 'chart.js/auto';
 import { useNotification } from '../components/NotificationProvider.jsx';
 import { consolidarCarteira, buildSummary, formatCurrency, formatPercentage, toIsoDate, normalizeAssetSymbol, normalizeMovementType, getMovementFinalValue } from '../services/investmentCalculations';
+import { buildInvestmentTips } from '../services/investmentTipsService.js';
 import { buildBuySellComparison } from '../services/investmentAnalyticsService.js';
-import { buildHomeTips } from '../services/financialTipsService';
 
 const ASSET_TYPES = ['Ação', 'FII', 'ETF', 'Criptomoeda', 'BDR', 'Título público', 'Título bancário', 'Título corporativo', 'Plano previdenciário'];
 const MOVEMENT_TYPES = ['Compra', 'Venda', 'Dividendo', 'Juros sobre capital próprio', 'Rendimento', 'Bonificação', 'Desdobramento', 'Grupamento'];
 const PROVENT_TYPES = ['Dividendo', 'Juros sobre capital próprio', 'Rendimento', 'Amortização', 'Outro'];
-const QUOTE_LABELS = ['Ativo', 'Cotação informada manualmente', 'Última atualização'];
 
 const tabs = [
   { id: 'overview', label: 'Visão Geral' },
   { id: 'carteira', label: 'Carteira' },
   { id: 'movimentacoes', label: 'Movimentações' },
-  { id: 'proventos', label: 'Proventos' },
+  { id: 'proventos', label: 'Rendimentos' },
 ];
 
 const tabDescriptions = {
-  overview: 'A aba Visão Geral mostra os principais indicadores da sua carteira, cotações manuais registradas e o comportamento dos ativos ao longo dos últimos meses.',
-  carteira: 'A aba Carteira detalha cada ativo, mostrando posição, cotação atual, rentabilidade e participação. Use-a para monitorar seu portfólio e decidir compras ou vendas.',
-  movimentacoes: 'A aba Movimentações registra compras, vendas e ajustes. É aqui que você cadastra suas operações e acompanha o histórico financeiro por ativo.',
-  proventos: 'A aba Proventos controla dividendos, juros e rendimentos recebidos. Registre cada pagamento para calcular a rentabilidade real dos seus ativos.',
+  overview: 'Acompanhe o valor estimado da carteira, os resultados e os rendimentos que você registrou.',
+  carteira: 'Veja quantidade, preço médio, cotação informada, valor atual estimado e resultado de cada ativo.',
+  movimentacoes: 'Registre compras e vendas usando os dados da nota de corretagem. Cada operação atualiza a quantidade e o preço médio do ativo.',
+  proventos: 'Registre dividendos, juros e outros valores recebidos. Nesta aba também é possível informar a cotação atual dos ativos.',
 };
 
 const Investimentos = () => {
-  const navigate = useNavigate();
   const { notify, confirm } = useNotification();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -48,12 +45,12 @@ const Investimentos = () => {
     aportesNoMes: 0,
   });
   const [tips, setTips] = useState([]);
-  const [despesas, setDespesas] = useState([]);
-  const [receitas, setReceitas] = useState([]);
-  const [limites, setLimites] = useState([]);
-  const [reservas, setReservas] = useState([]);
-  const [dividas, setDividas] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [buySellView, setBuySellView] = useState('asset');
+  const [buySellMetric, setBuySellMetric] = useState('value');
+  const [buySellPeriod, setBuySellPeriod] = useState('all');
+  const [buySellStartDate, setBuySellStartDate] = useState('');
+  const [buySellEndDate, setBuySellEndDate] = useState('');
 
   const [movementForm, setMovementForm] = useState({
     tipoAtivo: 'Ação',
@@ -97,14 +94,7 @@ const Investimentos = () => {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [dataDe, setDataDe] = useState('');
   const [dataAte, setDataAte] = useState('');
-  const [proventDataDe, setProventDataDe] = useState('');
-  const [proventDataAte, setProventDataAte] = useState('');
   const [resultChartMetric, setResultChartMetric] = useState('resultadoTotal'); // New state for chart metric
-  const [buySellView, setBuySellView] = useState('asset'); // 'asset' | 'monthly'
-  const [buySellMetric, setBuySellMetric] = useState('value'); // 'value' | 'quantity'
-  const [buySellPeriod, setBuySellPeriod] = useState('all'); // 'thisMonth' | 'last3Months' | 'last6Months' | 'thisYear' | 'all' | 'custom'
-  const [buySellStartDate, setBuySellStartDate] = useState('');
-  const [buySellEndDate, setBuySellEndDate] = useState('');
 
   const distributionChartRef = useRef(null);
   const distributionChartInstance = useRef(null);
@@ -159,42 +149,20 @@ const Investimentos = () => {
     setLoading(true);
     try {
       const ids = await getPartnerIds(userId);
-      const [movSnap, provSnap, quoteSnap, despSnap, recSnap, divSnap] = await Promise.all([
+      const [movSnap, provSnap, quoteSnap] = await Promise.all([
         getDocs(query(collection(db, 'investimentos_movimentacoes'), where('userId', 'in', ids), orderBy('data', 'desc'))),
         getDocs(query(collection(db, 'investimentos_proventos'), where('userId', 'in', ids), orderBy('dataPagamento', 'desc'))),
         getDocs(query(collection(db, 'investimentos_cotacoes'), where('userId', 'in', ids), orderBy('data', 'desc'))),
-        getDocs(query(collection(db, 'despesas'), where('userId', 'in', ids), orderBy('data', 'desc'))),
-        getDocs(query(collection(db, 'rendas'), where('userId', 'in', ids), orderBy('data', 'desc'))),
-        getDocs(query(collection(db, 'dividas'), where('userId', 'in', ids), orderBy('createdAt', 'desc'))),
       ]);
 
       const collectedMovements = movSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const collectedProvents = provSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const collectedQuotes = quoteSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const collectedDespesas = despSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const collectedReceitas = recSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const collectedDividas = divSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-      const limiteDocs = await Promise.all(ids.map(async (id) => {
-        const limiteSnap = await getDoc(doc(db, 'limites', id));
-        return limiteSnap.exists() ? limiteSnap.data().categorias || {} : {};
-      }));
-      const combinedLimits = limiteDocs.reduce((acc, next) => {
-        Object.entries(next).forEach(([categoria, valor]) => {
-          acc.push({ categoria, valor: Number(valor) });
-        });
-        return acc;
-      }, []);
-
       const combinedQuotes = [...collectedQuotes];
 
       setMovements(collectedMovements);
       setProvents(collectedProvents);
       setQuotes(collectedQuotes);
-      setDespesas(collectedDespesas);
-      setReceitas(collectedReceitas);
-      setLimites(combinedLimits);
-      setDividas(collectedDividas);
       
       const newPortfolio = consolidarCarteira(collectedMovements, combinedQuotes, collectedProvents);
       setPortfolio(newPortfolio);
@@ -202,17 +170,9 @@ const Investimentos = () => {
         if (!current?.codigo) return null;
         return newPortfolio.find((item) => normalizeAssetSymbol(item.codigo) === normalizeAssetSymbol(current.codigo)) || null;
       });
-      setSummary(buildSummary(newPortfolio, collectedProvents, collectedMovements));
-      setTips(buildHomeTips({
-        despesas: collectedDespesas,
-        receitas: collectedReceitas,
-        limites: combinedLimits,
-        reservas: [],
-        dividas: collectedDividas,
-        portfolio: newPortfolio,
-        provents: collectedProvents,
-        quotes: combinedQuotes,
-      }));
+      const newSummary = buildSummary(newPortfolio, collectedMovements);
+      setSummary(newSummary);
+      setTips(buildInvestmentTips({ portfolio: newPortfolio, summary: newSummary, provents: collectedProvents }));
     } catch (error) {
       console.error('Erro ao carregar investimentos:', error);
       notify('Não foi possível carregar os dados de investimentos.', 'danger');
@@ -227,6 +187,8 @@ const Investimentos = () => {
       if (currentUser) fetchFullData(currentUser.uid);
     });
     return () => unsubscribe();
+  // fetchFullData is invoked only when the authentication state changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -794,14 +756,6 @@ const Investimentos = () => {
     sortBy: 'recent', // 'recent' | 'oldest' | 'valueDesc' | 'valueAsc' | 'codeAsc' | 'codeDesc' | 'qtyDesc' | 'qtyAsc'
   });
 
-  const [proventFilters, setProventFilters] = useState({
-    search: '', // for asset code
-    type: 'all', // for provent type
-    minAmount: '',
-    maxAmount: '',
-    sortBy: 'recent', // 'recent' | 'oldest' | 'valueDesc' | 'valueAsc' | 'codeAsc' | 'codeDesc' | 'qtyDesc'
-  });
-
   // Memoized filtered data for each tab
   const filteredPortfolio = useMemo(() => {
     let filtered = [...portfolio];
@@ -919,55 +873,10 @@ const Investimentos = () => {
     return filtered;
   }, [movements, dataDe, dataAte, movementFilters]);
 
-  const filteredProvents = useMemo(() => {
-    let filtered = [...provents].filter(prov => {
-      if (proventDataDe || proventDataAte) {
-        const provDate = new Date(prov.dataPagamento + 'T00:00:00');
-        const startDate = proventDataDe ? new Date(proventDataDe + 'T00:00:00') : null;
-        const endDate = proventDataAte ? new Date(proventDataAte + 'T23:59:59') : null;
-        if (startDate && provDate < startDate) return false;
-        if (endDate && provDate > endDate) return false;
-      }
-      return true;
-    });
-
-    if (proventFilters.search) {
-      const searchTerm = normalizeAssetSymbol(proventFilters.search);
-      filtered = filtered.filter(prov => normalizeAssetSymbol(prov.ativo).includes(searchTerm));
-    }
-    if (proventFilters.type !== 'all') {
-      filtered = filtered.filter(prov => prov.tipoProvento === proventFilters.type);
-    }
-    if (proventFilters.minAmount) {
-      const min = Number(proventFilters.minAmount);
-      if (!isNaN(min)) {
-        filtered = filtered.filter(prov => Number(prov.valorTotal || 0) >= min);
-      }
-    }
-    if (proventFilters.maxAmount) {
-      const max = Number(proventFilters.maxAmount);
-      if (!isNaN(max)) {
-        filtered = filtered.filter(prov => Number(prov.valorTotal || 0) <= max);
-      }
-    }
-
-    // Sorting
-    filtered.sort((a, b) => {
-      switch (proventFilters.sortBy) {
-        case 'oldest': return new Date(a.dataPagamento) - new Date(b.dataPagamento);
-        case 'valueDesc': return Number(b.valorTotal || 0) - Number(a.valorTotal || 0);
-        case 'valueAsc': return Number(a.valorTotal || 0) - Number(b.valorTotal || 0);
-        case 'codeAsc': return a.ativo.localeCompare(b.ativo);
-        case 'codeDesc': return b.ativo.localeCompare(a.ativo);
-        case 'qtyDesc': return Number(b.valorPorUnidade || 0) - Number(a.valorPorUnidade || 0);
-        case 'qtyAsc': return Number(a.valorPorUnidade || 0) - Number(b.valorPorUnidade || 0);
-        case 'recent':
-        default: return new Date(b.dataPagamento) - new Date(a.dataPagamento);
-      }
-    });
-
-    return filtered;
-  }, [provents, proventDataDe, proventDataAte, proventFilters]);
+  const filteredProvents = useMemo(
+    () => [...provents].sort((a, b) => new Date(b.dataPagamento) - new Date(a.dataPagamento)),
+    [provents]
+  );
 
   const filteredQuotes = useMemo(() => {
     // Basic implementation, can be expanded with filters later
@@ -1025,18 +934,16 @@ const Investimentos = () => {
   );
 
   const overviewCards = [
-    { label: 'Total investido', value: formatCurrency(summary.totalInvestido), color: 'text-sky-400', icon: '💼' },
-    { label: 'Valor atual', value: formatCurrency(summary.valorAtual), color: 'text-blue-400', icon: '💰' },
-    { label: 'Resultado da posição', value: formatCurrency(summary.resultadoNaoRealizado), color: summary.resultadoNaoRealizado >= 0 ? 'text-green-400' : 'text-red-400', icon: summary.resultadoNaoRealizado >= 0 ? '📊' : '📉' },
+    { label: 'Capital na posição', value: formatCurrency(summary.totalInvestido), color: 'text-sky-400', icon: '💼' },
+    { label: 'Valor atual estimado', value: formatCurrency(summary.valorAtual), color: 'text-blue-400', icon: '💰' },
+    { label: 'Ganho ou perda da posição', value: formatCurrency(summary.resultadoNaoRealizado), color: summary.resultadoNaoRealizado >= 0 ? 'text-green-400' : 'text-red-400', icon: summary.resultadoNaoRealizado >= 0 ? '📊' : '📉' },
     { label: 'Rentabilidade da posição', value: formatPercentage(summary.rentabilidadePosicao), color: summary.rentabilidadePosicao >= 0 ? 'text-green-400' : 'text-red-400', icon: '⚡' },
-    { label: 'Proventos recebidos', value: formatCurrency(summary.proventosRecebidos), color: 'text-violet-400', icon: '🟣' },
+    { label: 'Rendimentos recebidos', value: formatCurrency(summary.proventosRecebidos), color: 'text-violet-400', icon: '🟣' },
     { label: 'Resultado Total', value: formatCurrency(summary.resultadoTotal), color: summary.resultadoTotal >= 0 ? 'text-green-400' : 'text-red-400', icon: summary.resultadoTotal >= 0 ? '✅' : '❌' },
     { label: 'Rentabilidade Total', value: formatPercentage(summary.rentabilidadeTotal), color: summary.rentabilidadeTotal >= 0 ? 'text-green-400' : 'text-red-400', icon: '🚀' },
-    { label: 'Aportes no mês', value: formatCurrency(summary.aportesNoMes), color: 'text-cyan-400', icon: '💧' },
+    { label: 'Compras no mês', value: formatCurrency(summary.aportesNoMes), color: 'text-cyan-400', icon: '💧' },
   ];
 
-  const profitAssets = portfolio.filter((item) => item.resultadoNaoRealizado >= 0);
-  const lossAssets = portfolio.filter((item) => item.resultadoNaoRealizado < 0);
   const missingQuoteAssets = portfolio.filter((item) => item.cotacaoAtual === 0 && item.quantidadeAtual > 0);
   const movementAssets = useMemo(() => Array.from(new Set(movements.filter((mov) => mov.ativo).map((mov) => normalizeAssetSymbol(mov.ativo)))), [movements]);
 
@@ -1050,12 +957,17 @@ const Investimentos = () => {
     movementForm.tipoMovimentacao === 'Venda' &&
     codigoMovimentacao &&
     (ativoDisponivel || quantidadeDisponivelVenda === 0);
+  const tabCounters = {
+    carteira: { value: portfolio.length, label: portfolio.length === 1 ? 'ativo' : 'ativos' },
+    movimentacoes: { value: movements.length, label: movements.length === 1 ? 'operação' : 'operações' },
+    proventos: { value: provents.length, label: provents.length === 1 ? 'rendimento' : 'rendimentos' },
+  };
     
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn" aria-busy={loading}>
       <div className="border-l-4 border-blue-500 pl-4">
-        <h2 className="text-white font-bold text-2xl">Investimentos</h2>
-        <p className="text-gray-400 text-sm">Acompanhe sua carteira e suas movimentações.</p>
+        <h2 className="page-title">Investimentos</h2>
+        <p className="page-subtitle">Acompanhe sua carteira e suas movimentações.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1064,15 +976,53 @@ const Investimentos = () => {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-3xl border px-4 py-3 text-left text-sm font-semibold transition ${activeTab === tab.id ? 'border-primary bg-primary/10 text-white' : 'border-border bg-background-secondary text-text-secondary hover:border-white/20 hover:bg-surface'}`}
+            className={`rounded-2xl border px-4 py-3 text-left transition ${activeTab === tab.id ? 'border-primary bg-primary/10 text-text-primary shadow-sm' : 'border-border bg-background-secondary text-text-secondary hover:border-primary/40 hover:bg-surface'}`}
           >
-            {tab.label}
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold">{tab.label}</span>
+              {tabCounters[tab.id] && (
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${activeTab === tab.id ? 'bg-primary text-white' : 'bg-surface-elevated text-text-secondary'}`}>
+                  {tabCounters[tab.id].value}
+                </span>
+              )}
+            </span>
+            {tabCounters[tab.id] && <span className="mt-1 block text-xs font-normal text-text-muted">{tabCounters[tab.id].label} cadastrados</span>}
           </button>
         ))}
       </div>
       <div className="rounded-3xl border border-border bg-background-secondary p-4 text-sm text-text-secondary">
         <p>{tabDescriptions[activeTab]}</p>
       </div>
+
+      {activeTab === 'overview' && (
+        <section className="space-y-4 rounded-3xl border border-border bg-surface p-5 shadow-sm md:p-6">
+          <div>
+            <h3 className="text-lg font-bold text-text-primary">Comece por aqui</h3>
+            <p className="mt-1 text-sm text-text-secondary">Cadastre suas operações e mantenha as cotações atualizadas para acompanhar os resultados.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <article className="flex flex-col rounded-2xl border border-border bg-surface-elevated p-4">
+              <span className="text-xs font-bold uppercase tracking-wide text-primary">1 · Operações</span>
+              <h4 className="mt-2 font-semibold text-text-primary">Registre compras e vendas</h4>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-text-secondary">Use os dados da nota de corretagem: código do ativo, quantidade, preço por unidade e taxas.</p>
+              <button type="button" onClick={() => setActiveTab('movimentacoes')} className="mt-4 self-start rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-hover">Registrar operação</button>
+            </article>
+            <article className="flex flex-col rounded-2xl border border-border bg-surface-elevated p-4">
+              <span className="text-xs font-bold uppercase tracking-wide text-primary">2 · Cotação</span>
+              <h4 className="mt-2 font-semibold text-text-primary">Atualize o preço do ativo</h4>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-text-secondary">A cotação não é atualizada automaticamente. Informe o preço mais recente para calcular o valor atual estimado.</p>
+              <button type="button" onClick={() => setActiveTab('proventos')} className="mt-4 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-surface-elevated">Informar cotação</button>
+            </article>
+            <article className="flex flex-col rounded-2xl border border-border bg-surface-elevated p-4">
+              <span className="text-xs font-bold uppercase tracking-wide text-primary">3 · Rendimentos</span>
+              <h4 className="mt-2 font-semibold text-text-primary">Lance os valores recebidos</h4>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-text-secondary">Registre dividendos, juros e outros proventos. O total é calculado pelo valor por unidade e pela quantidade.</p>
+              <button type="button" onClick={() => setActiveTab('proventos')} className="mt-4 self-start rounded-xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-surface-elevated">Registrar rendimento</button>
+            </article>
+          </div>
+          <p className="rounded-xl bg-surface-elevated px-4 py-3 text-xs leading-relaxed text-text-secondary"><strong className="text-text-primary">Como ler os resultados:</strong> o ganho ou perda da posição compara o valor atual com o capital ainda investido. O resultado total também considera vendas realizadas e rendimentos registrados.</p>
+        </section>
+      )}
 
       {activeTab === 'overview' && (
         <section className="space-y-6">
@@ -1161,6 +1111,31 @@ const Investimentos = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-3xl border border-border bg-surface p-5 shadow-lg">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-text-primary">Compras e vendas</h3>
+                <p className="mt-1 text-sm text-text-secondary">Compare suas operações por ativo ou ao longo do tempo.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <select aria-label="Agrupar comparação" value={buySellView} onChange={(event) => setBuySellView(event.target.value)} className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary">
+                  <option value="asset">Por ativo</option><option value="monthly">Por mês</option>
+                </select>
+                <select aria-label="Métrica da comparação" value={buySellMetric} onChange={(event) => setBuySellMetric(event.target.value)} className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary">
+                  <option value="value">Valores em reais</option><option value="quantity">Quantidade</option>
+                </select>
+                <select aria-label="Período da comparação" value={buySellPeriod} onChange={(event) => setBuySellPeriod(event.target.value)} className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary">
+                  <option value="all">Todo o período</option><option value="thisMonth">Este mês</option><option value="last3Months">Últimos 3 meses</option><option value="last6Months">Últimos 6 meses</option><option value="thisYear">Este ano</option><option value="custom">Personalizado</option>
+                </select>
+                {buySellPeriod === 'custom' && <>
+                  <input aria-label="Data inicial" type="date" value={buySellStartDate} onChange={(event) => setBuySellStartDate(event.target.value)} className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary" />
+                  <input aria-label="Data final" type="date" value={buySellEndDate} onChange={(event) => setBuySellEndDate(event.target.value)} className="rounded-xl border border-border bg-background-secondary px-3 py-2 text-sm text-text-primary" />
+                </>}
+              </div>
+            </div>
+            {buySellChartData.length ? <div className="mt-4 h-64"><canvas ref={buySellChartRef} aria-label="Gráfico comparativo de compras e vendas" role="img" /></div> : <p className="mt-4 rounded-xl bg-surface-elevated p-4 text-sm text-text-secondary">Registre compras ou vendas para visualizar a comparação.</p>}
           </div>
 
           {/* Linha 2: Gráficos de Distribuição e Desempenho */}
@@ -1263,6 +1238,17 @@ const Investimentos = () => {
 
       {activeTab === 'carteira' && (
         <section className="space-y-6"> {/* Filters for Carteira */}
+          <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-bold text-text-primary">Seus investimentos</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">Aqui você acompanha o que possui, quanto investiu e quanto vale hoje. O valor atual depende da cotação mais recente informada.</p>
+              <p className="mt-2 text-xs font-semibold text-text-muted">{portfolio.length} {portfolio.length === 1 ? 'ativo na carteira' : 'ativos na carteira'}{missingQuoteAssets.length > 0 ? ` · ${missingQuoteAssets.length} sem cotação atualizada` : ''}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setActiveTab('movimentacoes')} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-hover">Registrar compra ou venda</button>
+              {missingQuoteAssets.length > 0 && <button type="button" onClick={() => setActiveTab('proventos')} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:bg-surface-elevated">Atualizar cotações</button>}
+            </div>
+          </div>
           <div className="bg-surface border border-border rounded-3xl p-5 shadow-lg">
             <h3 className="text-lg font-bold text-text-primary">Filtros da carteira</h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1529,9 +1515,17 @@ const Investimentos = () => {
 
       {activeTab === 'movimentacoes' && (
         <section className="space-y-6"> {/* Filters for Movimentações */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-bold">Histórico de operações</h3>
+              <p className="mt-1 text-sm leading-relaxed">Cada compra ou venda deve ser lançada separadamente com os dados da nota da corretora. Dividendos e juros recebidos ficam na aba Rendimentos.</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold dark:bg-white/10">{movements.length} {movements.length === 1 ? 'registro' : 'registros'}</span>
+          </div>
           <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
             <div className="bg-surface border border-border rounded-3xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-white">Registrar movimentação</h3>
+              <h3 className="text-lg font-bold text-text-primary">Registrar operação</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">Preencha os dados da sua nota de corretagem. Para compras e vendas, informe quantidade, preço por unidade e taxas.</p>
               <form onSubmit={saveMovement} className="mt-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
@@ -1541,16 +1535,18 @@ const Investimentos = () => {
                     </select>
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Tipo de movimentação
+                    Tipo de operação
                     <select value={movementForm.tipoMovimentacao} onChange={(e) => setMovementForm({ ...movementForm, tipoMovimentacao: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition">
                       {MOVEMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
                     </select>
+                    <span className="block text-xs text-text-muted">Para dividendos, juros e rendimentos recebidos, use a aba Rendimentos.</span>
                   </label>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Código do ativo <span className="text-red-500">*</span>
-                    <input value={movementForm.ativo} onChange={(e) => setMovementForm({ ...movementForm, ativo: e.target.value.toUpperCase() })} placeholder="Ex: PETR4" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    Código do ativo (ticker) <span className="text-red-500">*</span>
+                    <input value={movementForm.ativo} onChange={(e) => setMovementForm({ ...movementForm, ativo: e.target.value.toUpperCase() })} placeholder="Ex.: PETR4, ITUB4 ou IVVB11" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <span className="block text-xs text-text-muted">Use o código que aparece na sua corretora.</span>
                     {movementErrors.ativo && <span className="text-xs text-red-400">{movementErrors.ativo}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
@@ -1565,7 +1561,7 @@ const Investimentos = () => {
                     {movementErrors.data && <span className="text-xs text-red-400">{movementErrors.data}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Quantidade <span className="text-red-500">*</span>
+                    Quantidade de ações ou cotas <span className="text-red-500">*</span>
                     <input type="number" step="any" min="0" value={movementForm.quantidade} onChange={(e) => setMovementForm({ ...movementForm, quantidade: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
                     {movementErrors.quantidade && <span className="text-xs text-red-400">{movementErrors.quantidade}</span>}
                     {showAvailableQuantity && (
@@ -1586,13 +1582,15 @@ const Investimentos = () => {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Preço unitário {movementForm.tipoMovimentacao === 'Compra' || movementForm.tipoMovimentacao === 'Venda' ? <span className="text-red-500">*</span> : ''}
+                    Preço por ação ou cota (R$) {movementForm.tipoMovimentacao === 'Compra' || movementForm.tipoMovimentacao === 'Venda' ? <span className="text-red-500">*</span> : ''}
                     <input type="number" step="0.01" min="0" value={movementForm.precoUnitario} onChange={(e) => setMovementForm({ ...movementForm, precoUnitario: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <span className="block text-xs text-text-muted">Informe o preço de uma unidade, conforme a nota.</span>
                     {movementErrors.precoUnitario && <span className="text-xs text-red-400">{movementErrors.precoUnitario}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Taxas
+                    Taxas da operação (R$)
                     <input type="number" step="0.01" min="0" value={movementForm.taxas} onChange={(e) => setMovementForm({ ...movementForm, taxas: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <span className="block text-xs text-text-muted">Corretagem, emolumentos e outros custos. Use 0 se não houver.</span>
                     {movementErrors.taxas && <span className="text-xs text-red-400">{movementErrors.taxas}</span>}
                   </label>
                 </div>
@@ -1742,7 +1740,7 @@ const Investimentos = () => {
                     <th className="px-4 py-3">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border">{
                   filteredMovements.map((item) => (
                     <tr key={item.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-4 py-4">{item.data}</td>
@@ -1791,9 +1789,21 @@ const Investimentos = () => {
 
       {activeTab === 'proventos' && (
         <section className="space-y-6"> {/* Filters for Proventos */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-950/25">
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-800 dark:text-violet-200">Rendimentos registrados</p>
+              <p className="mt-1 text-xl font-bold text-text-primary">{formatCurrency(summary.proventosRecebidos)}</p>
+              <p className="mt-1 text-xs text-text-secondary">{provents.length} {provents.length === 1 ? 'pagamento lançado' : 'pagamentos lançados'}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-surface p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-text-secondary">Qual informação usar?</p>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">Lance dividendos e juros conforme o extrato. Para acompanhar a valorização, informe a cotação atual do ativo no quadro ao lado.</p>
+            </div>
+          </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="bg-surface border border-border rounded-3xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-text-primary">Registrar provento</h3>
+              <h3 className="text-lg font-bold text-text-primary">Registrar rendimento recebido</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">Informe o valor pago por ação ou cota e a quantidade que recebeu. O total é calculado automaticamente; você pode alterá-lo usando a opção abaixo.</p>
               <form onSubmit={saveProvento} className="mt-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
@@ -1818,30 +1828,32 @@ const Investimentos = () => {
                     {proventoErrors.dataPagamento && <span className="text-xs text-red-400">{proventoErrors.dataPagamento}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Valor por unidade <span className="text-red-500">*</span>
+                    Valor recebido por ação ou cota (R$) <span className="text-red-500">*</span>
                     <input type="number" step="0.01" min="0" value={proventoForm.valorPorUnidade} onChange={(e) => setProventoForm({ ...proventoForm, valorPorUnidade: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
                     {proventoErrors.valorPorUnidade && <span className="text-xs text-red-400">{proventoErrors.valorPorUnidade}</span>}
                   </label>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Quantidade de referência <span className="text-red-500">*</span>
+                    Quantidade de ações ou cotas na data do pagamento <span className="text-red-500">*</span>
                     <input type="number" step="any" min="0" value={proventoForm.quantidadeReferencia} onChange={(e) => setProventoForm({ ...proventoForm, quantidadeReferencia: e.target.value })} className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    <span className="block text-xs text-text-muted">Use a quantidade considerada no pagamento informado.</span>
                     {proventoErrors.quantidadeReferencia && <span className="text-xs text-red-400">{proventoErrors.quantidadeReferencia}</span>}
                   </label>
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Valor total
+                    Total recebido (R$)
                     <input type="number" step="0.01" min="0" value={proventoForm.valorTotal} readOnly={!proventoForm.manualValorTotal} onChange={(e) => setProventoForm({ ...proventoForm, valorTotal: e.target.value, manualValorTotal: true })} className={`w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition ${!proventoForm.manualValorTotal ? 'bg-surface-elevated cursor-not-allowed' : ''}`} />
+                    <span className="block text-xs text-text-muted">Calculado automaticamente: valor por unidade × quantidade.</span>
                     {proventoErrors.valorTotal && <span className="text-xs text-red-400">{proventoErrors.valorTotal}</span>}
                   </label>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">
-                    Cotação do ativo na data
-                    <input type="number" step="0.01" min="0" value={proventoForm.cotacaoNaData} onChange={(e) => setProventoForm({ ...proventoForm, cotacaoNaData: e.target.value })} placeholder="Preço para calcular yield" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
+                    Cotação do ativo na data (opcional)
+                    <input type="number" step="0.01" min="0" value={proventoForm.cotacaoNaData} onChange={(e) => setProventoForm({ ...proventoForm, cotacaoNaData: e.target.value })} placeholder="Preço para calcular o rendimento (%)" className="w-full rounded-2xl border border-border bg-background-secondary px-4 py-3 text-text-primary outline-none transition" />
                   </label>
                   <div className="space-y-2 text-sm text-text-secondary">
-                    Yield do provento
+                    Rendimento sobre a cotação informada
                     <div className="w-full rounded-2xl border border-border bg-surface-elevated px-4 py-3 text-text-primary font-bold">
                       {proventoYield > 0 ? `${proventoYield.toFixed(2)}%` : '—'}
                     </div>
@@ -1851,7 +1863,7 @@ const Investimentos = () => {
                 <div className="text-sm text-text-secondary">
                   <label className="space-y-2 flex items-center gap-2">
                     <input type="checkbox" checked={proventoForm.manualValorTotal} onChange={(e) => setProventoForm({ ...proventoForm, manualValorTotal: e.target.checked })} className="h-4 w-4 rounded border-border bg-background-secondary text-primary" />
-                    Ajustar valor total manualmente
+                    Informar o total recebido manualmente
                   </label>
                 </div>
                 <div className="text-sm text-text-secondary">
@@ -1867,7 +1879,8 @@ const Investimentos = () => {
               </form>
             </div>
             <div className="bg-surface border border-border rounded-3xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-text-primary">Registrar Cotação Manual</h3>
+              <h3 className="text-lg font-bold text-text-primary">Atualizar cotação do ativo</h3>
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">A carteira usa a cotação mais recente que você informar para estimar o valor atual e o resultado da posição. Consulte sua corretora antes de atualizar.</p>
               <form onSubmit={saveQuote} className="mt-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-2 text-sm text-text-secondary">

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿export const normalizeAssetSymbol = (value) => {
+export const normalizeAssetSymbol = (value) => {
   return String(value || '')
     .trim()
     .toUpperCase();
@@ -27,12 +27,22 @@ export const parseDate = (date) => {
 };
 
 export const toIsoDate = (date) => {
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
   const d = parseDate(date);
-  return d.toISOString().split('T')[0];
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const normalizeMovementType = (type) => {
-  switch ((type || '').toUpperCase()) {
+  const normalizedType = String(type || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  switch (normalizedType) {
     case 'COMPRA': return 'COMPRA';
     case 'VENDA': return 'VENDA';
     case 'BONIFICACAO':
@@ -80,12 +90,8 @@ export const consolidarCarteira = (rawMovements = [], rawQuotes = [], rawProvent
     const existingTimestamp = existing ? new Date(`${existing.data || '1970-01-01'}T${existing.horario || '00:00:00'}`).getTime() : 0;
 
     if (!existing || quoteTimestamp >= existingTimestamp) {
-      acc[ticker] = quote;
+      acc[ticker] = { ...quote, cotacao: Number(quote.cotacao || 0) };
     }
-    acc[ticker] = {
-      ...quote,
-      cotacao: Number(quote.cotacao || 0),
-    };
     return acc;
   }, {});
 
@@ -186,6 +192,27 @@ export const consolidarCarteira = (rawMovements = [], rawQuotes = [], rawProvent
     asset.ultimaMovimentacaoData = mov.data; // Update last movement date
   });
 
+  rawQuotes.forEach((quote) => {
+    const ticker = normalizeAssetSymbol(quote.ativo);
+    if (!ticker || assets[ticker]) return;
+    assets[ticker] = {
+      codigo: ticker,
+      nome: quote.nomeAtivo || ticker,
+      tipoAtivo: quote.tipoAtivo || getAssetTypeFromTicker(ticker),
+      quantidadeAtual: 0,
+      quantidadeComprada: 0,
+      quantidadeVendida: 0,
+      precoMedio: 0,
+      capitalInvestidoAtual: 0,
+      valorBrutoVendido: 0,
+      valorLiquidoVendido: 0,
+      resultadoRealizado: 0,
+      proventosRecebidos: 0,
+      ultimaMovimentacaoData: null,
+      corretora: '',
+    };
+  });
+
   // 5. Finalize calculations for each asset
   const consolidatedPortfolio = Object.values(assets).map((asset) => {
     const cotacaoAtual = quoteMap[asset.codigo]?.cotacao || 0;
@@ -227,7 +254,7 @@ export const consolidarCarteira = (rawMovements = [], rawQuotes = [], rawProvent
   }));
 };
 
-export const buildSummary = (portfolio = [], provents = [], movements = []) => {
+export const buildSummary = (portfolio = [], movements = []) => {
   const totalInvestido = portfolio.reduce((sum, pos) => sum + pos.capitalInvestidoAtual, 0);
   const valorAtual = portfolio.reduce((sum, pos) => sum + pos.valorAtual, 0);
   const resultadoNaoRealizado = portfolio.reduce((sum, pos) => sum + pos.resultadoNaoRealizado, 0);
@@ -240,7 +267,7 @@ export const buildSummary = (portfolio = [], provents = [], movements = []) => {
   const today = new Date();
   const mesAtual = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const aportesNoMes = movements
-    .filter((mov) => mov.tipoMovimentacao === 'Compra' && String(mov.data || '').startsWith(mesAtual))
+    .filter((mov) => normalizeMovementType(mov.tipoMovimentacao) === 'COMPRA' && String(mov.data || '').startsWith(mesAtual))
     .reduce((sum, item) => sum + (Number(item.quantidade || 0) * Number(item.precoUnitario || 0) + Number(item.taxas || 0)), 0);
   return {
     totalInvestido,

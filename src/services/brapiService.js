@@ -26,7 +26,7 @@ const createError = (status, message) => {
 };
 
 const getBrapiToken = () => {
-  const token = process.env.BRAPI_TOKEN;
+const token = globalThis.process?.env?.BRAPI_TOKEN || '';
   if (!token) {
     throw createError(
       401,

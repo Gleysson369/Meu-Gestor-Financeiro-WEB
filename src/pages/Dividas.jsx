@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, orderBy, getDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -69,6 +69,8 @@ const Dividas = () => {
 
   useEffect(() => {
     if (user) fetchDividas();
+  // The current user is the fetch trigger; fetchDividas is recreated on each render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleRegistrar = async (e) => {
@@ -196,8 +198,8 @@ const Dividas = () => {
     <div className="space-y-10 animate-fadeIn">
       {/* Título Principal */}
       <div className="border-l-4 border-red-500 pl-4">
-        <h2 className="text-white font-bold text-2xl mb-1">Dívidas e Acordos</h2>
-        <p className="text-gray-400 text-sm">Gerencie e liquide seus passivos</p>
+        <h2 className="page-title">Dívidas e Acordos</h2>
+        <p className="page-subtitle">Gerencie e liquide seus passivos</p>
       </div>
 
       {/* Indicadores Gerais */}

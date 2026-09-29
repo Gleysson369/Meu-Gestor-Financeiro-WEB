@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
-import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, orderBy, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNotification } from '../components/NotificationProvider.jsx';
+import { toLocalDateInput } from '../utils/formatters.js';
 
 const Receita = () => {
   const meses = [
@@ -11,7 +12,7 @@ const Receita = () => {
   ];
   const anoAtual = new Date().getFullYear();
 
-  const getToday = () => new Date().toISOString().split('T')[0];
+  const getToday = () => toLocalDateInput();
 
   const [user, setUser] = useState(null);
   const [receitas, setReceitas] = useState([]);
@@ -120,6 +121,8 @@ const Receita = () => {
       fetchReceitas();
       fetchCategorias();
     }
+  // The selected user and month determine when these queries should run.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo, user]);
 
   // 3. Salvar ou Atualizar
@@ -163,20 +166,6 @@ const Receita = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDuplicate = (item) => {
-    setEditingId(null); // Garante que não está em modo de edição
-    setFormData({
-      descricao: `${item.descricao} (Cópia)`,
-      categoria: item.categoria,
-      data: getToday(), // Data atual para a nova receita
-      valor: item.valor,
-      observacao: item.observacao || '',
-      recorrente: item.recorrente || false,
-    });
-    notify('Receita duplicada. Ajuste os detalhes e salve.', 'info');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleDelete = async (id) => {
     const confirmed = await confirm({
       title: 'Excluir Receita',
@@ -216,12 +205,12 @@ const Receita = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn" aria-busy={loading}>
       {/* Header e Saldo Total */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="border-l-4 border-green-500 pl-4">
-          <h2 className="text-white font-black italic uppercase tracking-tighter text-3xl">Receitas</h2>
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em]">Gestão de Entradas</p>
+          <h2 className="page-title">Receitas</h2>
+          <p className="page-subtitle">Gestão de Entradas</p>
         </div>
         
         <div className="bg-[#14191e] border border-green-500/20 px-8 py-4 rounded-2xl shadow-2xl flex flex-col items-end">
@@ -329,6 +318,17 @@ const Receita = () => {
             </select>
         </div>
         
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-gray-500">Buscar receita
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Digite uma descrição" className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white" />
+          </label>
+          <label className="text-xs font-semibold text-gray-500">Filtrar categoria
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white">
+              <option value="Todas">Todas as categorias</option>
+              {categorias.map((categoria) => <option key={categoria.id} value={categoria.nome}>{categoria.nome}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-400">
             <thead className="text-xs uppercase font-bold text-gray-400 bg-zinc-900">

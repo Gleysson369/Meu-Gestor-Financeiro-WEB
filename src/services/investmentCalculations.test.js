@@ -2,8 +2,42 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import { consolidarCarteira, buildSummary, normalizeMovementType, getAssetTypeFromTicker } from './investmentCalculations.js';
 import { buildBuySellComparison } from './investmentAnalyticsService.js';
+import { toLocalDateInput } from '../utils/formatters.js';
+import { buildInvestmentTips } from './investmentTipsService.js';
 
-const buildDateString = (date) => date.toISOString().split('T')[0];
+
+describe('toLocalDateInput', () => {
+  it('preserva o dia local no valor de um campo de data', () => {
+    const localDate = new Date(2026, 8, 29, 23, 30);
+    assert.equal(toLocalDateInput(localDate), '2026-09-29');
+  });
+
+  it('retorna texto vazio para uma data inválida', () => {
+    assert.equal(toLocalDateInput('data inválida'), '');
+  });
+});
+
+describe('buildInvestmentTips', () => {
+  it('sugere como começar quando a carteira está vazia', () => {
+    const tips = buildInvestmentTips();
+    assert.equal(tips.length, 2);
+    assert.match(tips[0].description, /aba Movimentações/);
+  });
+
+  it('usa os ativos, cotações e rendimentos da carteira para gerar dicas', () => {
+    const tips = buildInvestmentTips({
+      portfolio: [
+        { codigo: 'ITUB4', quantidadeAtual: 10, valorAtual: 900, cotacaoAtual: 90, resultadoNaoRealizado: 100 },
+        { codigo: 'PETR4', quantidadeAtual: 5, valorAtual: 100, cotacaoAtual: 0, resultadoNaoRealizado: 0 },
+      ],
+      summary: { proventosRecebidos: 25 },
+      provents: [{ id: 'provento-1' }],
+    });
+    assert.ok(tips.some((tip) => tip.id === 'investment-update-quotes'));
+    assert.ok(tips.some((tip) => tip.id === 'investment-concentration-ITUB4'));
+    assert.ok(tips.some((tip) => tip.id === 'investment-review-position-result'));
+  });
+});
 
 describe('consolidarCarteira', () => {
   it('buildPortfolio should aggregate buys and quotes correctly', () => {
@@ -203,7 +237,6 @@ describe('consolidarCarteira', () => {
       { codigo: 'A', capitalInvestidoAtual: 500, valorAtual: 550, resultadoNaoRealizado: 50, resultadoRealizado: 10, proventosRecebidos: 5, resultadoTotal: 65, valorLiquidoVendido: 0 },
       { codigo: 'B', capitalInvestidoAtual: 300, valorAtual: 330, resultadoNaoRealizado: 30, resultadoRealizado: 20, proventosRecebidos: 10, resultadoTotal: 60, valorLiquidoVendido: 0 },
     ];
-    const provents = [{ valorTotal: 20 }, { valorTotal: 15 }];
     const today = new Date();
     const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const movements = [
@@ -212,7 +245,7 @@ describe('consolidarCarteira', () => {
       { tipoMovimentacao: 'VENDA', data: `${currentMonth}-12`, quantidade: 1, precoUnitario: 20, taxas: 0 },
     ];
 
-    const summary = buildSummary(portfolio, provents, movements);
+    const summary = buildSummary(portfolio, movements);
     assert.equal(summary.totalInvestido, 800, 'Total Investido');
     assert.equal(summary.valorAtual, 880, 'Valor Atual');
     assert.equal(summary.resultadoNaoRealizado, 80, 'Resultado Não Realizado');

@@ -1,7 +1,11 @@
-const toIsoDate = (date) => date.toISOString().split('T')[0];
+import { formatBRL, toLocalDateInput } from '../utils/formatters.js';
+
+const toIsoDate = (date) => toLocalDateInput(date);
 
 export const parseMonthKey = (dateString) => {
   if (!dateString) return null;
+  const datePrefix = String(dateString).match(/^(\d{4})-(\d{2})/);
+  if (datePrefix) return `${datePrefix[1]}-${datePrefix[2]}`;
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return null;
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -12,6 +16,7 @@ const sumByPeriod = (items, periodKey, field) => items
   .reduce((sum, item) => sum + Number(item[field] || 0), 0);
 
 const round = (value, digits = 2) => Number(value.toFixed(digits));
+const formatPercent = (value) => `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
 
 const makeTip = ({
   id,
@@ -49,7 +54,7 @@ const makeTip = ({
   expiresAt,
 });
 
-export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], reservas = [], dividas = [], portfolio = [], provents = [], quotes = [] }) => {
+export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], reservas = [], dividas = [] }) => {
   const tips = [];
   const today = new Date();
   const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -90,7 +95,7 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       description: `As suas despesas totais superam suas receitas. Priorize cortes em gastos variáveis para recuperar liquidez rapidamente.`,
       reason: 'O gasto mensal excede a receita disponível, reduzindo sua capacidade de poupança.',
       estimatedBenefit: round(totalExpenses - totalIncome),
-      estimatedBenefitLabel: `Economia estimada de R$ ${round(totalExpenses - totalIncome)}`,
+      estimatedBenefitLabel: `Economia estimada de ${formatBRL(totalExpenses - totalIncome)}`,
       impact: 'high',
       difficulty: 'moderate',
       actionLabel: 'Rever despesas',
@@ -111,10 +116,10 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       ruleKey: 'top-category-spend',
       category: 'saving',
       title: `Revise gastos em ${topCategoryLabel}`,
-      description: `A categoria ${topCategoryLabel} concentra ${round(topCategoryPercent)}% dos seus gastos. Corte 5-10% dessa categoria para liberar caixa.`,
+      description: `A categoria ${topCategoryLabel} concentra ${formatPercent(topCategoryPercent)} dos seus gastos. Corte 5% a 10% dessa categoria para liberar caixa.`,
       reason: 'Uma categoria representa uma parte muito grande da despesa total.',
       estimatedBenefit: round(topCategory[1] * 0.05),
-      estimatedBenefitLabel: `Meta de economia: R$ ${round(topCategory[1] * 0.05)}`,
+      estimatedBenefitLabel: `Meta de economia: ${formatBRL(topCategory[1] * 0.05)}`,
       impact: 'medium',
       difficulty: 'easy',
       actionLabel: 'Ajustar orçamento',
@@ -137,8 +142,8 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       title: 'Aumente sua taxa de poupança',
       description: `Seu saldo mensal disponível é pequeno. Direcione pelo menos 10% da receita para reservas ou investimentos.`,
       reason: 'Uma taxa de poupança baixa reduz sua capacidade de formar reserva de emergência.',
-      estimatedBenefit: round((incomeThisMonth - expensesThisMonth) * 0.3),
-      estimatedBenefitLabel: `Potencial de economia: R$ ${round((incomeThisMonth - expensesThisMonth) * 0.3)}`,
+      estimatedBenefit: round(Math.max(0, (incomeThisMonth - expensesThisMonth) * 0.3)),
+      estimatedBenefitLabel: `Potencial de economia: ${formatBRL(Math.max(0, (incomeThisMonth - expensesThisMonth) * 0.3))}`,
       impact: 'medium',
       difficulty: 'easy',
       actionLabel: 'Planejar poupança',
@@ -181,7 +186,7 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       description: 'Uma reserva financeira protege você de imprevistos. Economize um valor pequeno e constante a cada mês.',
       reason: 'Não há reservas registradas para suportar despesas inesperadas.',
       estimatedBenefit: round(totalExpenses * 0.05),
-      estimatedBenefitLabel: `Meta inicial: economize R$ ${round(totalExpenses * 0.05)} por mês.`,
+      estimatedBenefitLabel: `Meta inicial: economize ${formatBRL(totalExpenses * 0.05)} por mês.`,
       impact: 'high',
       difficulty: 'easy',
       actionLabel: 'Criar reserva',
@@ -201,10 +206,10 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
         ruleKey: 'improve-reserve',
         category: 'reserve',
         title: 'Fortaleça sua reserva financeira',
-        description: `Você já acumulou R$ ${round(reserveSaved)}, mas ainda faltam R$ ${round(reserveTarget - reserveSaved)} para o objetivo.`,
+        description: `Você já acumulou ${formatBRL(reserveSaved)}, mas ainda faltam ${formatBRL(reserveTarget - reserveSaved)} para o objetivo.`,
         reason: 'Reservas incompletas deixam você exposto a despesas inesperadas.',
         estimatedBenefit: round(reserveTarget - reserveSaved),
-        estimatedBenefitLabel: `Falta economizar: R$ ${round(reserveTarget - reserveSaved)}`,
+      estimatedBenefitLabel: `Falta economizar: ${formatBRL(reserveTarget - reserveSaved)}`,
         impact: 'medium',
         difficulty: 'moderate',
         actionLabel: 'Aumentar aporte',
@@ -227,10 +232,10 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       ruleKey: 'reduce-debt',
       category: 'debts',
       title: 'Use sobra para amortizar dívidas',
-      description: `Dívidas totais de R$ ${round(debtTotal)} podem ser reduzidas com pagamentos extras de quando houver superávit.`,
+      description: `Dívidas totais de ${formatBRL(debtTotal)} podem ser reduzidas com pagamentos extras quando houver superávit.`,
       reason: 'Reduzir dívida diminui juros futuros e aumenta a saúde financeira.',
       estimatedBenefit: benefit,
-      estimatedBenefitLabel: `Pagamento extra sugerido: R$ ${benefit}`,
+      estimatedBenefitLabel: `Pagamento extra sugerido: ${formatBRL(benefit)}`,
       impact: 'high',
       difficulty: 'moderate',
       actionLabel: 'Rever dívidas',
@@ -274,7 +279,7 @@ export const buildHomeTips = ({ despesas = [], receitas = [], limites = [], rese
       description: 'Já existe um pequeno superávit. Direcione parte dele para reserva ou amortização de dívida a cada mês.',
       reason: 'Aproveitar superávit evita que ele seja consumido por gastos não planejados.',
       estimatedBenefit: round(availableSurplus * 0.5),
-      estimatedBenefitLabel: `Valor disponível recomendado: R$ ${round(availableSurplus * 0.5)}`,
+      estimatedBenefitLabel: `Valor disponível recomendado: ${formatBRL(availableSurplus * 0.5)}`,
       impact: 'medium',
       difficulty: 'easy',
       actionLabel: 'Definir aporte',

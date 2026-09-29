@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
-import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, orderBy, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNotification } from '../components/NotificationProvider.jsx';
+import { formatBRL, toLocalDateInput } from '../utils/formatters.js';
 
 const Despesas = () => {
   const meses = [
@@ -11,7 +12,7 @@ const Despesas = () => {
   ];
   const anoAtual = new Date().getFullYear();
 
-  const getToday = () => new Date().toISOString().split('T')[0];
+  const getToday = () => toLocalDateInput();
 
   const [user, setUser] = useState(null);
   const [despesas, setDespesas] = useState([]);
@@ -122,6 +123,8 @@ const Despesas = () => {
       fetchDespesas();
       fetchCategorias();
     }
+  // fetch functions close over the current user and period; avoid refetching on each render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo, user]);
 
   const handleSubmit = async (e) => {
@@ -137,6 +140,54 @@ const Despesas = () => {
       // Se pago, mas sem data de pagamento, usa a data de vencimento
       if (payload.status === 'Pago' && !payload.dataPagamento) {
         payload.dataPagamento = payload.data;
+      }
+
+      const profileSnap = await getDoc(doc(db, 'usuarios', user.uid));
+      const partnerId = profileSnap.data()?.parceiroId;
+      const ids = partnerId ? [user.uid, partnerId] : [user.uid];
+      const settingsSnaps = await Promise.all(ids.map((id) => getDoc(doc(db, 'limites', id))));
+      const envelopesAtivos = settingsSnaps.some((settingsSnap) => settingsSnap.data()?.metodoOrcamento === 'envelopes');
+
+      if (envelopesAtivos) {
+        const [year, month] = payload.data.split('-');
+        const startDate = `${year}-${month}-01`;
+        const endDate = `${year}-${month}-${new Date(Number(year), Number(month), 0).getDate()}`;
+        let categoryLimit = 0;
+
+        for (const id of ids) {
+          const limitSnap = await getDoc(doc(db, 'limites', id));
+          categoryLimit += Number(limitSnap.data()?.categorias?.[payload.categoria] || 0);
+        }
+
+        if (categoryLimit <= 0) {
+          notify(`Defina primeiro um envelope para ${payload.categoria} em Limites de Gastos.`, 'warning');
+          return;
+        }
+
+        const monthlyExpensesQuery = query(
+          collection(db, 'despesas'),
+          where('userId', 'in', ids),
+          where('data', '>=', startDate),
+          where('data', '<=', endDate)
+        );
+        const monthlyExpensesSnap = await getDocs(monthlyExpensesQuery);
+        const alreadySpent = monthlyExpensesSnap.docs.reduce((total, expenseDoc) => {
+          const expense = expenseDoc.data();
+          return expenseDoc.id !== editingId && expense.categoria === payload.categoria
+            ? total + Number(expense.valor || 0)
+            : total;
+        }, 0);
+        const expenseBeingEdited = despesas.find((expense) => expense.id === editingId);
+        const isReducingExistingEnvelopeSpend = expenseBeingEdited
+          && expenseBeingEdited.categoria === payload.categoria
+          && expenseBeingEdited.data?.slice(0, 7) === payload.data.slice(0, 7)
+          && payload.valor <= Number(expenseBeingEdited.valor || 0);
+
+        if (!isReducingExistingEnvelopeSpend && alreadySpent + payload.valor > categoryLimit + 0.001) {
+          const remaining = Math.max(categoryLimit - alreadySpent, 0);
+          notify(`Envelope de ${payload.categoria} insuficiente. Disponível: ${formatBRL(remaining)}.`, 'danger');
+          return;
+        }
       }
 
       if (editingId) {
@@ -304,12 +355,12 @@ const Despesas = () => {
     }).filter(Boolean);
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn" aria-busy={loading}>
       {/* Header e Saldo Total de Despesas */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="border-l-4 border-red-600 pl-4">
-          <h2 className="text-white font-bold text-2xl">Despesas</h2>
-          <p className="text-gray-400 text-sm">Gestão de Gastos</p>
+          <h2 className="page-title">Despesas</h2>
+          <p className="page-subtitle">Gestão de Gastos</p>
         </div>
 
         <div className="bg-[#14191e] border border-red-500/20 px-8 py-4 rounded-2xl shadow-2xl flex flex-col items-end">

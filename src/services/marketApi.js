@@ -1,20 +1,6 @@
 const BRAPI_BASE_URL = 'https://brapi.dev/api/v2/stocks';
 const BRAPI_TOKEN = import.meta.env.VITE_BRAPI_TOKEN || '';
 
-const createError = async (response) => {
-  const text = await response.text().catch(() => 'Erro desconhecido');
-  const contentType = response.headers.get('content-type') || '';
-  const snippet = text ? text.slice(0, 220) : null;
-  const message = contentType.includes('text/html')
-    ? `Resposta HTML inesperada da API (${response.status}). Verifique se a conexão com brapi.dev está funcionando.`
-    : snippet
-      ? `Erro na API BRAPI: ${response.status}. Resposta: ${snippet}`
-      : `Erro na API BRAPI: ${response.status}`;
-  const error = new Error(message);
-  error.status = response.status;
-  throw error;
-};
-
 const handleResponse = async (response) => {
   const contentType = response.headers.get('content-type') || '';
   const text = await response.text().catch(() => '');

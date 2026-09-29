@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 const NotificationContext = createContext(null);
 
@@ -70,10 +70,11 @@ export function NotificationProvider({ children }) {
     <NotificationContext.Provider value={{ notify, confirm, prompt }}>
       {children}
 
-      <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-3 max-w-sm">
+      <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-3 max-w-sm" aria-live="polite" aria-atomic="false">
         {messages.map((message) => (
           <div
             key={message.id}
+            role={message.type === 'danger' ? 'alert' : 'status'}
             className={`rounded-3xl border p-4 shadow-xl ring-1 ring-black/5 transition-all ${
               message.type === 'success'
                 ? 'bg-success/10 border-success text-success'
@@ -101,9 +102,9 @@ export function NotificationProvider({ children }) {
 
       {confirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-[32px] border border-border bg-surface p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-[32px] border border-border bg-surface p-6 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-title">
             <div className="mb-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-text-muted">{confirmation.title}</p>
+              <p id="confirmation-title" className="text-xs uppercase tracking-[0.3em] text-text-muted">{confirmation.title}</p>
               <p className="mt-3 text-text-primary text-base leading-relaxed">{confirmation.message}</p>
             </div>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -128,9 +129,9 @@ export function NotificationProvider({ children }) {
 
       {promptRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-[32px] border border-border bg-surface p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-[32px] border border-border bg-surface p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
             <div className="mb-4">
-              <p className="text-xs uppercase tracking-[0.3em] text-text-muted">{promptRequest.title}</p>
+              <p id="prompt-title" className="text-xs uppercase tracking-[0.3em] text-text-muted">{promptRequest.title}</p>
               <p className="mt-3 text-text-primary text-base leading-relaxed">{promptRequest.message}</p>
             </div>
             <label className="block mb-4 text-sm text-text-secondary">

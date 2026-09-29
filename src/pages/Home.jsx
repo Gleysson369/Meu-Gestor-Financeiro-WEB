@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../services/firebase';
 import { collection, getDocs, query, where, doc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import Chart from 'chart.js/auto';
 import { buildHomeTips } from '../services/financialTipsService.js';
+import { formatBRL, formatCompactBRL, toLocalDateInput } from '../utils/formatters.js';
 
 const Home = () => {
-  const meses = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-  ];
-  const anoAtual = new Date().getFullYear();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
 
   const ICONS = {
     saldo: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>,
@@ -55,8 +54,10 @@ const Home = () => {
     comparativos: {},
   });
   const [monthlyComparison, setMonthlyComparison] = useState([]);
+  const [monthlyLabels, setMonthlyLabels] = useState([]);
   const [tips, setTips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
 
   // 1. Efeito para monitorar Auth (roda apenas uma vez)
   useEffect(() => {
@@ -101,9 +102,29 @@ const Home = () => {
           break;
       }
       return {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0],
+        start: toLocalDateInput(startDate),
+        end: toLocalDateInput(endDate),
       };
+    };
+
+    const getPeriodBuckets = (periodKey) => {
+      const now = new Date();
+      const start = periodKey === 'current_year'
+        ? new Date(now.getFullYear(), 0, 1)
+        : periodKey === 'last_6_months'
+          ? new Date(now.getFullYear(), now.getMonth() - 5, 1)
+          : periodKey === 'prev_month'
+            ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+            : new Date(now.getFullYear(), now.getMonth(), 1);
+      const count = periodKey === 'current_year' ? 12 : periodKey === 'last_6_months' ? 6 : 1;
+
+      return Array.from({ length: count }, (_, index) => {
+        const date = new Date(start.getFullYear(), start.getMonth() + index, 1);
+        return {
+          key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+          label: date.toLocaleDateString('pt-BR', { month: 'short', ...(count === 1 ? { year: 'numeric' } : {}) }),
+        };
+      });
     };
 
     const fetchDashboardData = async () => {
@@ -146,6 +167,9 @@ const Home = () => {
 
         const collectedReceitas = receitasSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         const collectedDespesas = despesasSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const periodBuckets = getPeriodBuckets(periodo);
+        const monthlyData = periodBuckets.map((bucket) => ({ key: bucket.key, entradas: 0, saidas: 0 }));
+        const monthlyByKey = new Map(monthlyData.map((item) => [item.key, item]));
 
         // Processamento dos dados
         const categoriasMap = {};
@@ -156,21 +180,32 @@ const Home = () => {
         let totalAtrasadas = 0;
         let totalAVencer = 0;
 
-        collectedReceitas.forEach((item) => totalEntradas += Number(item.valor || 0));
+        collectedReceitas.forEach((item) => {
+          const valor = Number(item.valor || 0);
+          totalEntradas += valor;
+          const month = monthlyByKey.get(item.data?.slice(0, 7));
+          if (month) month.entradas += valor;
+        });
 
         despesasSnap.forEach(doc => {
           const d = doc.data();
           const valor = Number(d.valor) || 0;
           totalSaidas += valor;
           categoriasMap[d.categoria] = (categoriasMap[d.categoria] || 0) + valor;
+          const month = monthlyByKey.get(d.data?.slice(0, 7));
+          if (month) month.saidas += valor;
 
-          if (d.pago) {
+          const status = d.status || (d.pago ? 'Pago' : 'Pendente');
+          const dataDespesa = d.data ? new Date(`${d.data}T00:00:00`) : null;
+          const statusEfetivo = status === 'Pendente' && dataDespesa && dataDespesa < today
+            ? 'Atrasado'
+            : status;
+          if (statusEfetivo === 'Pago') {
             totalPagas += valor;
           } else {
-            const dataDespesa = new Date(d.data + 'T00:00:00');
-            if (dataDespesa < today) {
+            if (statusEfetivo === 'Atrasado') {
               totalAtrasadas += valor;
-            } else {
+            } else if (statusEfetivo === 'Pendente') {
               totalAVencer += valor;
             }
             totalPendentes += valor;
@@ -186,7 +221,7 @@ const Home = () => {
             id: 'alert-negative-balance',
             status: 'Saldo negativo',
             cat: 'Orçamento',
-            message: `Seu saldo mensal está negativo em R$ ${Math.abs(totalSaldo).toFixed(2)}.`,
+            message: `Seu saldo mensal está negativo em ${formatBRL(Math.abs(totalSaldo))}.`,
             color: 'text-red-400',
             bg: 'bg-red-500/10',
             border: 'border-red-500/20',
@@ -207,7 +242,11 @@ const Home = () => {
 
         despesasSnap.docs.forEach((docItem) => {
           const d = docItem.data();
-          if (!d.pago && d.data) {
+          const status = d.status || (d.pago ? 'Pago' : 'Pendente');
+          const statusEfetivo = status === 'Pendente' && d.data && new Date(`${d.data}T00:00:00`) < today
+            ? 'Atrasado'
+            : status;
+          if (statusEfetivo !== 'Pago' && d.data) {
             const dueDate = new Date(`${d.data}T00:00:00`);
             const diffDays = Math.round((dueDate - today) / (1000 * 60 * 60 * 24));
             if (diffDays >= 0 && diffDays <= 3) {
@@ -260,11 +299,29 @@ const Home = () => {
         });
 
         // Gráfico de comparação mensal (simplificado para o período atual)
-        const monthlyData = meses.map(() => ({ entradas: 0, saidas: 0 }));
-        const currentMonthIndex = new Date().getMonth();
-        monthlyData[currentMonthIndex] = { entradas: totalEntradas, saidas: totalSaidas };
-
         const limiteItems = Object.entries(limitesMap).map(([categoria, valor]) => ({ categoria, valor }));
+
+        // Agrupa alertas de vencimento por categoria para evitar uma lista longa
+        // com um cartão repetido para cada despesa.
+        const alertasAgrupados = alertasGerados.reduce((acc, alerta) => {
+          if (!['Conta vencendo', 'Conta atrasada'].includes(alerta.status)) {
+            acc.push(alerta);
+            return acc;
+          }
+          const key = `${alerta.status}:${alerta.cat}`;
+          const existente = acc.find((item) => item.id === key);
+          if (existente) {
+            existente.count += 1;
+          } else {
+            acc.push({ ...alerta, id: key, count: 1 });
+          }
+          return acc;
+        }, []).map((alerta) => alerta.count > 1 ? {
+          ...alerta,
+          message: alerta.status === 'Conta atrasada'
+            ? `${alerta.count} despesas de ${alerta.cat} estão atrasadas.`
+            : `${alerta.count} despesas de ${alerta.cat} vencem nos próximos dias.`,
+        } : alerta);
 
         setDados({
           entradas: totalEntradas,
@@ -277,7 +334,7 @@ const Home = () => {
           porCategoria: Object.entries(categoriasMap).map(([name, value]) => ({ name, value })),
           despesasPagas: totalPagas,
           despesasPendentes: totalPendentes,
-          alertas: alertasGerados,
+          alertas: alertasAgrupados,
           reservasProgresso: resData,
           dividasProgresso: divData,
           comparativos: { // Lógica de comparação a ser implementada
@@ -298,6 +355,7 @@ const Home = () => {
         }));
 
         setMonthlyComparison(monthlyData);
+        setMonthlyLabels(periodBuckets.map((bucket) => bucket.label));
       } catch (error) {
         console.error("Erro ao filtrar dados do Firebase:", error);
       } finally {
@@ -306,7 +364,7 @@ const Home = () => {
     };
 
     fetchDashboardData();
-  }, [periodo, user]); // Recarrega se o período ou o usuário logado mudar
+  }, [periodo, user, today]); // Recarrega se o período ou o usuário logado mudar
 
   // 3. Efeito para renderizar os gráficos quando os dados chegarem
   useEffect(() => { // eslint-disable-line
@@ -322,19 +380,24 @@ const Home = () => {
     chartInstance.current = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: meses,
+        labels: monthlyLabels,
         datasets: [
-          { label: 'Entradas', data: monthlyComparison.map(m => m.entradas), backgroundColor: '#10b981', borderRadius: 4 },
-          { label: 'Saídas', data: monthlyComparison.map(m => m.saidas), backgroundColor: '#ef4444', borderRadius: 4 }
+          { label: 'Entradas', data: monthlyComparison.map(m => m.entradas), backgroundColor: '#10b981', borderRadius: 7, maxBarThickness: 38 },
+          { label: 'Saídas', data: monthlyComparison.map(m => m.saidas), backgroundColor: '#ef4444', borderRadius: 7, maxBarThickness: 38 }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#9ca3af', font: { size: 10 } } } },
+        animation: { duration: 700, easing: 'easeOutQuart' },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', align: 'end', labels: { color: '#9ca3af', usePointStyle: true, boxWidth: 8, font: { size: 11 } } },
+          tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${formatBRL(context.raw)}` } },
+        },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 9 } } },
-          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 9 } } }
+          x: { grid: { display: false }, ticks: { color: '#9ca3af', maxRotation: 0, font: { size: 10 } }, border: { display: false } },
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' }, border: { display: false }, ticks: { color: '#9ca3af', maxTicksLimit: 6, callback: (value) => formatCompactBRL(value), font: { size: 10 } } }
         }
       }
     });
@@ -355,15 +418,16 @@ const Home = () => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 700, easing: 'easeOutQuart' },
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 }, padding: 20 } },
+          legend: { position: 'bottom', labels: { color: '#9ca3af', usePointStyle: true, boxWidth: 8, font: { size: 10 }, padding: 16 } },
           tooltip: {
             callbacks: {
               label: (context) => {
                 const value = context.raw;
                 const total = dados.saidas;
                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                return `${context.label}: ${percentage}% (R$ ${value.toFixed(2)})`;
+                return `${context.label}: ${Number(percentage).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% (${formatBRL(value)})`;
               }
             }
           }
@@ -388,14 +452,15 @@ const Home = () => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 700, easing: 'easeOutQuart' },
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 }, padding: 20 } },
+          legend: { position: 'bottom', labels: { color: '#9ca3af', usePointStyle: true, boxWidth: 8, font: { size: 10 }, padding: 16 } },
           tooltip: {
             callbacks: {
               label: (context) => {
                 const value = context.raw;
                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                return `${context.label}: ${percentage}% (R$ ${value.toFixed(2)})`;
+                return `${context.label}: ${Number(percentage).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% (${formatBRL(value)})`;
               }
             }
           }
@@ -418,15 +483,16 @@ const Home = () => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 700, easing: 'easeOutQuart' },
         plugins: {
-          legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 }, padding: 20 } },
+          legend: { position: 'bottom', labels: { color: '#9ca3af', usePointStyle: true, boxWidth: 8, font: { size: 10 }, padding: 16 } },
           tooltip: {
             callbacks: {
               label: (context) => {
                 const value = context.raw;
                 const total = dados.despesasPagas + dados.despesasPendentes;
                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                return `${context.label}: ${percentage}% (R$ ${value.toFixed(2)})`;
+                return `${context.label}: ${Number(percentage).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% (${formatBRL(value)})`;
               }
             }
           }
@@ -440,7 +506,7 @@ const Home = () => {
         if (instance.current) instance.current.destroy();
       });
     };
-  }, [monthlyComparison, dados]);
+  }, [monthlyComparison, monthlyLabels, dados]);
 
   const dicas = tips;
 
@@ -453,7 +519,7 @@ const Home = () => {
           {icon}
         </div>
         <h3 className={`text-2xl font-bold ${colorClass || 'text-white'}`}>
-          R$ {value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          {formatBRL(value)}
         </h3>
         {comparison !== undefined && <p className={`text-xs font-semibold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>{isPositive ? '↑' : '↓'} {Math.abs(comparison)}% vs. período anterior</p>}
       </div>
@@ -465,8 +531,8 @@ const Home = () => {
       {/* Header com Nome do Usuário */}
       <div className="flex justify-between items-end">
         <div className="border-l-4 border-blue-500 pl-4">
-          <h2 className="text-white font-bold text-2xl">Dashboard</h2>
-          <p className="text-gray-400 text-sm">Bem-vindo, {userName}</p>
+          <h2 className="page-title">Dashboard</h2>
+          <p className="page-subtitle">Bem-vindo, {userName}</p>
         </div>
         <div className="flex items-center gap-2 bg-[#14191e] p-1 rounded-xl border border-white/10">
           {['current_month', 'prev_month', 'last_6_months', 'current_year'].map(p => {
@@ -485,25 +551,30 @@ const Home = () => {
       </div>
 
       {/* Alertas Financeiros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {dados.alertas.length > 0 ? dados.alertas.map((alerta) => (
-          <div key={alerta.id} className={`${alerta.bg} ${alerta.border} border rounded-2xl p-4`}>
-            <div className="flex items-start gap-4">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${alerta.color} animate-pulse`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {dados.alertas.length > 0 ? <>
+          {(showAllAlerts ? dados.alertas : dados.alertas.slice(0, 6)).map((alerta) => (
+          <div key={alerta.id} className={`${alerta.bg} ${alerta.border} border rounded-xl px-4 py-3`}>
+            <div className="flex items-start gap-3">
+              <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${alerta.color}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">{alerta.status}: {alerta.cat}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">{alerta.status}: {alerta.cat}</p>
                 {alerta.message ? (
-                  <p className={`mt-2 text-sm font-semibold ${alerta.color}`}>{alerta.message}</p>
+                  <p className={`mt-1 text-sm leading-snug font-medium ${alerta.color}`}>{alerta.message}</p>
                 ) : alerta.percentual ? (
                   <p className={`mt-2 text-sm font-semibold ${alerta.color}`}>Limite atingido em {alerta.percentual}%</p>
                 ) : null}
               </div>
             </div>
           </div>
-        )) : (
-          <div className="md:col-span-3 rounded-3xl bg-[#0f172a] border border-white/10 p-6 text-gray-300 text-sm">
+        ))}
+          {dados.alertas.length > 6 && <button type="button" onClick={() => setShowAllAlerts((current) => !current)} className="md:col-span-2 xl:col-span-3 justify-self-start rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-gray-300 transition hover:bg-white/5">
+            {showAllAlerts ? 'Mostrar menos alertas' : `Ver todos os ${dados.alertas.length} alertas`}
+          </button>}
+        </> : (
+          <div className="md:col-span-2 xl:col-span-3 rounded-xl bg-[#0f172a] border border-white/10 p-4 text-gray-300 text-sm">
             Nenhum alerta financeiro urgente no momento. Continue acompanhando seus gastos e limites para manter a saúde do orçamento.
           </div>
         )}
@@ -516,7 +587,7 @@ const Home = () => {
         <Card title="Saídas" value={dados.saidas} icon={ICONS.saidas} comparison={dados.comparativos.saidas} colorClass="text-red-500" />
         <Card title="Economia do Mês" value={dados.economiaMes} icon={ICONS.economia} colorClass="text-blue-500" />
         
-        <Card title="Contas a Vencer" value={dados.contasAVencer} icon={ICONS.vencer} colorClass="text-yellow-500" />
+        <Card title="Despesas Pendentes" value={dados.contasAVencer} icon={ICONS.vencer} colorClass="text-yellow-500" />
         <Card title="Despesas Atrasadas" value={dados.despesasAtrasadas} icon={ICONS.atrasadas} colorClass="text-orange-500" />
         <Card title="Reservas Acumuladas" value={dados.reservasAcumuladas} icon={ICONS.reservas} colorClass="text-purple-500" />
       </div>
@@ -600,7 +671,7 @@ const Home = () => {
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold uppercase">
                   <span className="text-gray-400">{cat.name}</span>
-                  <span className="text-white">R$ {cat.value.toFixed(2)}</span>
+                  <span className="text-white">{formatBRL(cat.value)}</span>
                 </div>
                 <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                   <div 
@@ -627,7 +698,7 @@ const Home = () => {
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold uppercase">
                   <span className="text-gray-400">{item.nome}</span>
-                  <span className="text-green-500">{item.percent.toFixed(0)}% (R$ {item.valor.toFixed(2)})</span>
+                  <span className="text-green-500">{item.percent.toFixed(0)}% ({formatBRL(item.valor)})</span>
                 </div>
                 <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                   <div 
@@ -660,7 +731,7 @@ const Home = () => {
                   ></div>
                 </div>
                 <div className="flex justify-end">
-                  <span className="text-[10px] text-gray-600 font-semibold">Saldo: R$ {(item.total - item.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                  <span className="text-[10px] text-gray-400 font-semibold">Saldo: {formatBRL(item.total - item.valor)}</span>
                 </div>
               </div>
             )) : <p className="text-gray-500 text-center py-10 text-sm">Sem dívidas pendentes</p>}
@@ -669,46 +740,46 @@ const Home = () => {
       </div>
 
       {/* Dicas Financeiras */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 rounded-3xl border border-blue-600/20 bg-blue-600/10 p-8">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#14191e] px-5 py-4">
           <div>
-            <h3 className="text-blue-400 font-bold uppercase text-xs tracking-widest">Dicas Financeiras Inteligentes</h3>
-            <p className="text-gray-300 text-sm mt-2">Orientações práticas e direcionadas para que você gaste menos, poupe mais e organize seus recursos.</p>
+            <h3 className="text-white font-semibold text-base">Dicas financeiras</h3>
+            <p className="text-gray-400 text-sm mt-1">Sugestões personalizadas para organizar seu dinheiro.</p>
           </div>
-          <span className="rounded-full bg-blue-500/10 px-4 py-2 text-xs text-blue-200 uppercase tracking-[0.2em]">Baseado em seus dados</span>
+          <span className="rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300">Baseado nos seus dados</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           {dicas.length > 0 ? dicas.map((dica) => (
-            <div key={dica.id} className="rounded-3xl border border-white/10 bg-[#0b1220] p-6 shadow-xl shadow-black/20">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-sky-400">{dica.category}</p>
-                  <h4 className="mt-3 text-white font-semibold text-lg leading-tight">{dica.title}</h4>
+            <div key={dica.id} className="rounded-2xl border border-white/10 bg-[#14191e] p-4 shadow-lg shadow-black/10">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-400">{{ expenses: 'Despesas', debts: 'Dívidas', saving: 'Economia', reserve: 'Reservas', planning: 'Planejamento', income: 'Receitas', investment: 'Investimentos' }[dica.category] || dica.category}</p>
+                  <h4 className="mt-1.5 text-white font-semibold text-base leading-snug">{dica.title}</h4>
                 </div>
-                <div className="space-y-1 text-right text-[10px] uppercase tracking-[0.2em] text-gray-400">
-                  <span>{dica.impact}</span>
-                  <span>{dica.difficulty}</span>
+                <div className="flex shrink-0 flex-col items-end gap-1 text-[10px] font-medium text-gray-400">
+                  <span>Impacto {({ high: 'alto', medium: 'médio', low: 'baixo' })[dica.impact] || dica.impact}</span>
+                  <span>Dificuldade {({ easy: 'fácil', moderate: 'moderada', advanced: 'alta' })[dica.difficulty] || dica.difficulty}</span>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-gray-300">{dica.description}</p>
-              <p className="mt-3 text-xs text-gray-500">Motivo: {dica.reason}</p>
+              <p className="mt-3 text-sm leading-relaxed text-gray-300">{dica.description}</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-400">{dica.reason}</p>
               {dica.estimatedBenefitLabel ? (
-                <p className="mt-4 text-sm font-semibold text-white">{dica.estimatedBenefitLabel}</p>
+                <p className="mt-2 text-sm font-semibold text-white">{dica.estimatedBenefitLabel}</p>
               ) : null}
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 {dica.actionRoute ? (
-                  <button onClick={() => navigate(dica.actionRoute)} className="rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-sky-400">
+                  <button onClick={() => navigate(dica.actionRoute)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-500">
                     {dica.actionLabel}
                   </button>
                 ) : (
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300">{dica.actionLabel}</span>
                 )}
-                <span className="rounded-full bg-white/5 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-gray-400">Referência: {dica.referenceDate}</span>
+                <span className="rounded-lg bg-white/5 px-3 py-2 text-[11px] text-gray-400">Referência: {dica.referenceDate}</span>
               </div>
             </div>
           )) : (
-            <div className="md:col-span-2 rounded-3xl bg-[#0f172a] p-8 text-gray-300 text-sm">
+            <div className="md:col-span-2 rounded-2xl border border-white/10 bg-[#14191e] p-5 text-gray-300 text-sm">
               Nenhuma dica disponível no momento. Registre despesas ou receitas para obter orientações financeiras personalizadas.
             </div>
           )}

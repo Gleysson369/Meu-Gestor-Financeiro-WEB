@@ -1,7 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
-layer(base);
-
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 
 @theme {
   /* Breakpoints */
@@ -23,7 +28,7 @@ layer(base);
   --color-brand-950: #172554;
 
   /* Typography */
-  --font-outfit: "Outfit", sans-serif;
+  --font-outfit: "Inter", ui-sans-serif, system-ui, sans-serif;
   
   /* Animation */
   @keyframes fadeIn {
@@ -162,9 +167,21 @@ html {
     cursor: pointer;
   }
   body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
     background-color: var(--background-primary);
     color: var(--text-primary);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-optical-sizing: auto;
     @apply font-outfit;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 
   html.dark,
@@ -301,7 +318,26 @@ html {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer components {
+  .page-title {
+    @apply text-2xl font-bold leading-tight tracking-tight text-text-primary;
+  }
+
+  .page-subtitle {
+    @apply mt-1 text-sm leading-5 text-text-secondary;
+  }
+
   .menu-item {
     @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-sm;
   }
@@ -620,4 +656,114 @@ span.flatpickr-weekday,
 }
 .fc-button-group .fc-button {
   @apply flex h-10 w-10 items-center justify-center !rounded-lg border border-border bg-transparent hover:border-border hover:bg-surface-elevated focus:shadow-none active:!border-border active:!bg-transparent active:!shadow-none;
+}
+
+/* Responsive behavior shared by every page. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.app-main {
+  max-width: 1800px;
+  min-width: 0;
+}
+
+.app-main > *,
+.app-main section,
+.app-main article {
+  min-width: 0;
+}
+
+.app-main input,
+.app-main select,
+.app-main textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-main [role="dialog"],
+.app-main [role="alertdialog"] {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 1023px) {
+  .app-main {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-main {
+    padding-inline: 1rem;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .app-main .page-title {
+    font-size: clamp(1.25rem, 5vw, 1.5rem);
+  }
+
+  .app-main form [class~="grid-cols-2"],
+  .app-main form [class~="grid-cols-3"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-main form input:not([type="checkbox"]):not([type="radio"]),
+  .app-main form select,
+  .app-main form textarea {
+    width: 100%;
+  }
+
+  .app-main .overflow-x-auto > table {
+    min-width: 640px;
+  }
+
+  .cashflow-filters > div {
+    flex: 1 1 calc(50% - 0.75rem);
+    min-width: min(100%, 9rem);
+  }
+
+  .cashflow-filters > .cashflow-actions {
+    flex-basis: 100%;
+  }
+
+  .cashflow-actions button {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  .cashflow-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .cashflow-summary > div {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 374px) {
+  .app-main {
+    padding-inline: 0.75rem;
+  }
+
+  .cashflow-filters > div {
+    flex-basis: 100%;
+  }
+
+  .cashflow-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

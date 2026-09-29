@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ehParceiro(ownerId) {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.parceiroId == ownerId;
+    }
+
+    function alterouSomenteParceiroId() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parceiroId']);
+    }
+
+    function somenteParceiroIdFoiAlterado() {
+      return alterouSomenteParceiroId()
+        && request.resource.data.get('parceiroId', null) != resource.data.get('parceiroId', null);
+    }
+
+    function donoAtualizaPerfilComVinculoReciproco(userId) {
+      return request.auth.uid == userId
+        && (
+          request.resource.data.get('parceiroId', null) == resource.data.get('parceiroId', null)
+          || (
+            somenteParceiroIdFoiAlterado()
+            && (
+              request.resource.data.get('parceiroId', null) == null
+                ? resource.data.get('parceiroId', null) != null
+                  && getAfter(/databases/$(database)/documents/usuarios/$(resource.data.get('parceiroId', null))).data.get('parceiroId', null) == null
+                : request.resource.data.get('parceiroId', null) != userId
+                  && getAfter(/databases/$(database)/documents/usuarios/$(request.resource.data.get('parceiroId', null))).data.get('parceiroId', null) == userId
+            )
+          )
+        );
+    }
+
+    function parceiroAtualizaVinculoReciproco(userId) {
+      return somenteParceiroIdFoiAlterado()
+        && (
+          resource.data.get('parceiroId', null) == null
+            ? request.resource.data.get('parceiroId', null) == request.auth.uid
+              && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('parceiroId', null) == userId
+            : resource.data.get('parceiroId', null) == request.auth.uid
+              && request.resource.data.get('parceiroId', null) == null
+              && getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.get('parceiroId', null) == null
+        );
+    }
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (
+        donoAtualizaPerfilComVinculoReciproco(userId)
+        || parceiroAtualizaVinculoReciproco(userId)
+      );
+    }
+
+    match /categorias/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /despesas/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /rendas/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /limites/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || ehParceiro(userId));
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /reservas/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /dividas/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /investimentos_movimentacoes/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /investimentos_proventos/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /investimentos_cotacoes/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || ehParceiro(resource.data.userId));
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

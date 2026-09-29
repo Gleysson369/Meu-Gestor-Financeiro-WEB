@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { db, auth } from '../services/firebase';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Link } from 'react-router-dom';
+import { toLocalDateInput } from '../utils/formatters.js';
 
 const FluxoDeCaixa = () => {
   // Auxiliares para datas padrão
   const getPrimeiroDiaMes = () => {
     const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    return toLocalDateInput(new Date(d.getFullYear(), d.getMonth(), 1));
   };
 
   const getUltimoDiaMes = () => {
     const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+    return toLocalDateInput(new Date(d.getFullYear(), d.getMonth() + 1, 0));
   };
 
   const [user, setUser] = useState(null);
@@ -122,8 +123,8 @@ const FluxoDeCaixa = () => {
         .reduce((acc, curr) => acc + Number(curr.valor), 0);
       
       // Calcular Limite Total
-      const limitSum = Object.entries(limitesMap)
-        .reduce((acc, [_, val]) => acc + Number(val), 0);
+      const limitSum = Object.values(limitesMap)
+        .reduce((acc, val) => acc + Number(val), 0);
 
       const percentualLimite = limitSum > 0 ? (desTotal / limitSum) * 100 : 0;
 
@@ -148,6 +149,8 @@ const FluxoDeCaixa = () => {
 
   useEffect(() => {
     fetchData();
+  // fetchData depends on the current account and selected dates.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dataDe, dataAte]); // Refetch on date change
 
   const togglePago = async (item) => {
@@ -155,7 +158,7 @@ const FluxoDeCaixa = () => {
     try {
       await updateDoc(doc(db, "despesas", item.id), {
         status: item.status === 'Pago' ? 'Pendente' : 'Pago',
-        dataPagamento: item.status !== 'Pago' ? getToday() : ''
+        dataPagamento: item.status !== 'Pago' ? toLocalDateInput() : ''
       });
       fetchData();
     } catch (error) {
@@ -299,11 +302,11 @@ const FluxoDeCaixa = () => {
       {/* Header e Filtros */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="border-l-4 border-blue-600 pl-4">
-          <h2 className="text-white font-bold text-2xl">Fluxo de Caixa</h2>
-          <p className="text-gray-400 text-sm">Relatório Detalhado</p>
+          <h2 className="page-title">Fluxo de Caixa</h2>
+          <p className="page-subtitle">Relatório Detalhado</p>
         </div>
 
-        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+        <div className="cashflow-filters flex flex-wrap gap-3 w-full lg:w-auto">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-400">Início</label>
             <input 
@@ -361,7 +364,7 @@ const FluxoDeCaixa = () => {
             <input type="number" placeholder="R$ 1.000,00" value={valorMax} onChange={(e) => setValorMax(e.target.value)} className="bg-black border border-white/10 text-white font-bold text-xs rounded-lg px-4 py-2 outline-none focus:border-blue-500 transition-all" />
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="cashflow-actions flex items-end gap-2">
             <button 
               onClick={exportToExcel}
               className="bg-green-600 hover:bg-green-700 text-white font-bold uppercase text-xs tracking-widest px-4 h-[34px] rounded-xl transition-all shadow-lg shadow-green-600/20 flex items-center gap-2"
@@ -371,7 +374,7 @@ const FluxoDeCaixa = () => {
             </button>
             <button 
               onClick={handlePrint}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold uppercase text-xs tracking-widest px-4 h-[34px] rounded-xl transition-all flex items-center gap-2"
+              className="bg-surface border border-border text-text-primary hover:bg-surface-elevated font-bold uppercase text-xs tracking-widest px-4 h-[34px] rounded-xl transition-all flex items-center gap-2 shadow-sm"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               Imprimir
@@ -437,34 +440,34 @@ const FluxoDeCaixa = () => {
         </div>
 
         {/* Resumo de Totais no Rodapé da Tabela */}
-        <div className="flex flex-nowrap overflow-x-auto gap-4 bg-black/40 border-t border-white/5 p-4">
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-[#111827] p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Receitas</p>
-            <p className="text-xl font-bold text-green-500">R$ {totais.receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <div className="cashflow-summary flex flex-nowrap overflow-x-auto gap-4 bg-background-secondary border-t border-border p-4">
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Total Receitas</p>
+            <p className="text-xl font-bold text-green-700 dark:text-green-400">R$ {totais.receitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-[#111827] p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Despesas</p>
-            <p className="text-xl font-bold text-red-500">R$ {totais.despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Total Despesas</p>
+            <p className="text-xl font-bold text-red-700 dark:text-red-400">R$ {totais.despesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-blue-600/5 p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Saldo Líquido</p>
-            <p className={`text-xl font-bold ${totais.saldo >= 0 ? 'text-white' : 'text-red-600'}`}>
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Saldo Líquido</p>
+            <p className={`text-xl font-bold ${totais.saldo >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
               R$ {totais.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-blue-600/10 p-4">
-            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Saldo Previsto</p>
-            <p className={`text-xl font-bold ${totais.saldoPrevisto >= 0 ? 'text-blue-300' : 'text-orange-400'}`}>
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Saldo Previsto</p>
+            <p className={`text-xl font-bold ${totais.saldoPrevisto >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-400'}`}>
               R$ {totais.saldoPrevisto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-[#111827] p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Pendente</p>
-            <p className="text-xl font-bold text-yellow-500">R$ {totais.totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Total Pendente</p>
+            <p className="text-xl font-bold text-amber-700 dark:text-amber-400">R$ {totais.totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className="min-w-[180px] flex-shrink-0 rounded-3xl bg-[#111827] p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Atrasado</p>
-            <p className="text-xl font-bold text-orange-500">R$ {totais.totalAtrasado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <div className="min-w-[180px] flex-shrink-0 rounded-3xl border border-border bg-surface p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Total Atrasado</p>
+            <p className="text-xl font-bold text-orange-700 dark:text-orange-400">R$ {totais.totalAtrasado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { db, auth } from '../services/firebase';
+import { useRef, useState, useEffect } from 'react';
+import { db, auth, storage } from '../services/firebase';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { 
-  collection, addDoc, getDocs, query, where, deleteDoc, doc, orderBy, updateDoc, getDoc 
+  collection, addDoc, getDocs, query, where, deleteDoc, doc, orderBy, updateDoc, getDoc, runTransaction, writeBatch
 } from 'firebase/firestore';
 import { 
   onAuthStateChanged, updateProfile, updatePassword, 
@@ -10,22 +11,28 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../components/NotificationProvider.jsx';
 
+const MAX_PROFILE_PHOTO_SIZE = 2 * 1024 * 1024;
+const PROFILE_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 const Configuracoes = () => {
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('perfil');
   const [categorias, setCategorias] = useState([]);
   const [editingCatId, setEditingCatId] = useState(null);
   const [partnerEmail, setPartnerEmail] = useState('');
   const [linkedEmail, setLinkedEmail] = useState(null); 
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [linkedPartnerId, setLinkedPartnerId] = useState(null);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [notificationSettings, setNotificationSettings] = useState({
     emailUpdates: true,
     monthlySummary: true,
     securityAlerts: true,
   });
   const [catForm, setCatForm] = useState({ nome: '', tipo: 'despesa', icone: '📌' });
+  const photoInputRef = useRef(null);
   const navigate = useNavigate();
   const { notify, confirm, prompt } = useNotification();
 
@@ -82,18 +89,16 @@ const Configuracoes = () => {
 
   const fetchProfile = async (uid) => {
     try {
+      setLinkedEmail(null);
+      setLinkedPartnerId(null);
       const userDoc = await getDoc(doc(db, "usuarios", uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        if (data.parceiroId) {
-          const partnerDoc = await getDoc(doc(db, "usuarios", data.parceiroId));
-          if (partnerDoc.exists()) {
-            setLinkedEmail(partnerDoc.data().email);
-          }
-        } else {
-          setLinkedEmail(null);
-        }
-      }
+      if (!userDoc.exists()) return;
+      const partnerId = userDoc.data().parceiroId;
+      if (!partnerId) return;
+
+      setLinkedPartnerId(partnerId);
+      const partnerDoc = await getDoc(doc(db, "usuarios", partnerId));
+      if (partnerDoc.exists()) setLinkedEmail(partnerDoc.data().email || null);
     } catch (error) {
       console.error("Erro ao buscar perfil:", error);
     }
@@ -119,34 +124,166 @@ const Configuracoes = () => {
     }
   };
 
-  const handleInvite = async () => {
-    if (!partnerEmail.trim()) return;
-    setLoading(true);
+  const handlePhotoChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!PROFILE_PHOTO_TYPES.includes(file.type)) {
+      notify('Use uma imagem JPEG, PNG ou WebP.', 'warning');
+      return;
+    }
+    if (file.size > MAX_PROFILE_PHOTO_SIZE) {
+      notify('A foto deve ter no máximo 2 MB.', 'warning');
+      return;
+    }
+
     try {
-      const q = query(collection(db, "usuarios"), where("email", "==", partnerEmail.trim().toLowerCase()));
-      const snap = await getDocs(q);
+      const decodedImage = await createImageBitmap(file);
+      decodedImage.close();
+    } catch {
+      notify('Não foi possível abrir essa imagem. Escolha outro arquivo.', 'warning');
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      notify('Entre novamente para alterar sua foto.', 'warning');
+      return;
+    }
+
+    setPhotoLoading(true);
+    try {
+      const photoRef = ref(storage, `usuarios/${currentUser.uid}/perfil/avatar`);
+      await uploadBytes(photoRef, file, {
+        contentType: file.type,
+        cacheControl: 'private, max-age=3600',
+      });
+      const photoURL = await getDownloadURL(photoRef);
+      await updateProfile(currentUser, { photoURL });
+      setUser({ ...user, photoURL });
+      notify('Foto de perfil atualizada com sucesso.', 'success');
+    } catch (error) {
+      console.error('Erro ao enviar foto de perfil:', error);
+      const messagesByStorageError = {
+        'storage/bucket-not-found': 'O bucket do Firebase Storage não foi encontrado. Confira VITE_FIREBASE_STORAGE_BUCKET no .env.',
+        'storage/no-default-bucket': 'O Firebase Storage não tem um bucket configurado. Confira VITE_FIREBASE_STORAGE_BUCKET no .env.',
+        'storage/quota-exceeded': 'O Firebase Storage está indisponível neste plano ou excedeu a cota. Confira o plano de faturamento do projeto.',
+        'storage/unauthorized': 'As regras do Firebase Storage ainda não permitem esse upload. Publique storage.rules.',
+        'storage/unauthenticated': 'Sua sessão expirou. Entre novamente para enviar a foto.',
+      };
+      const message = messagesByStorageError[error.code]
+        || 'O navegador não conseguiu acessar o bucket. Confira o nome do bucket, o plano do projeto e a configuração CORS para http://localhost:5173.';
+      notify(message, 'danger');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    const confirmed = await confirm({
+      title: 'Remover foto de perfil',
+      message: 'Sua foto atual será removida e o perfil voltará a exibir sua inicial.',
+      confirmText: 'Remover foto',
+      cancelText: 'Cancelar',
+    });
+    if (!confirmed || !auth.currentUser) return;
+
+    setPhotoLoading(true);
+    try {
+      const photoRef = ref(storage, `usuarios/${auth.currentUser.uid}/perfil/avatar`);
+      await deleteObject(photoRef).catch((error) => {
+        if (error.code !== 'storage/object-not-found') throw error;
+      });
+      await updateProfile(auth.currentUser, { photoURL: null });
+      setUser({ ...user, photoURL: null });
+      notify('Foto de perfil removida.', 'success');
+    } catch (error) {
+      console.error('Erro ao remover foto de perfil:', error);
+      notify('Não foi possível remover a foto. Tente novamente.', 'danger');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    const normalizedEmail = partnerEmail.trim().toLowerCase();
+    if (!normalizedEmail || !user) return;
+    setLoading(true);
+    let shareStep = 'localizar a conta pelo e-mail';
+    try {
+      const usersRef = collection(db, "usuarios");
+      const normalizedQuery = query(usersRef, where("emailNormalizado", "==", normalizedEmail));
+      let snap = await getDocs(normalizedQuery);
+      if (snap.empty) {
+        const emailValues = [...new Set([partnerEmail.trim(), normalizedEmail])];
+        snap = await getDocs(query(usersRef, where("email", "in", emailValues)));
+      }
       
       if (snap.empty) {
-        notify('Usuário não encontrado com este e-mail.', 'warning');
+        notify('Não encontramos o perfil financeiro desse e-mail. Se a pessoa já tem conta, peça para entrar no app uma vez para sincronizar o perfil e tente novamente.', 'warning');
         return;
       }
 
-      const partnerUid = snap.docs[0].id;
+      const partnerMatch = snap.docs.find((account) => account.id !== user.uid);
+      if (!partnerMatch) {
+        notify('Você não pode compartilhar com você mesmo.', 'warning');
+        return;
+      }
+      const partnerUid = partnerMatch.id;
       if (partnerUid === user.uid) {
         notify('Você não pode compartilhar com você mesmo.', 'warning');
         return;
       }
 
-      // Vínculo bidirecional para facilitar as regras de segurança
-      await updateDoc(doc(db, "usuarios", user.uid), { parceiroId: partnerUid });
-      await updateDoc(doc(db, "usuarios", partnerUid), { parceiroId: user.uid });
+      const ownProfileRef = doc(db, "usuarios", user.uid);
+      const partnerProfileRef = doc(db, "usuarios", partnerUid);
+      shareStep = 'validar e gravar o vínculo nos dois perfis';
+      const result = await runTransaction(db, async (transaction) => {
+        const ownProfile = await transaction.get(ownProfileRef);
+        const partnerProfile = await transaction.get(partnerProfileRef);
+        if (!ownProfile.exists() || !partnerProfile.exists()) return 'missing-profile';
+
+        const ownPartnerId = ownProfile.data().parceiroId;
+        const otherPartnerId = partnerProfile.data().parceiroId;
+        if (ownPartnerId && ownPartnerId !== partnerUid) return 'already-linked';
+        if (otherPartnerId && otherPartnerId !== user.uid) return 'partner-linked';
+
+        transaction.update(ownProfileRef, { parceiroId: partnerUid });
+        transaction.update(partnerProfileRef, { parceiroId: user.uid });
+        return 'linked';
+      });
+
+      if (result === 'missing-profile') {
+        notify('Não foi possível localizar os dois perfis. Peça para a outra pessoa confirmar o cadastro e tente novamente.', 'warning');
+        return;
+      }
+      if (result === 'already-linked') {
+        notify('Sua conta já está compartilhada com outra pessoa. Encerre o vínculo atual antes de criar outro.', 'warning');
+        return;
+      }
+      if (result === 'partner-linked') {
+        notify('Este e-mail já está compartilhado com outra conta. A pessoa precisa encerrar esse vínculo antes.', 'warning');
+        return;
+      }
 
       notify('Compartilhamento ativado!', 'success');
       setPartnerEmail('');
-      fetchProfile(user.uid);
+      await fetchProfile(user.uid);
     } catch (error) {
-      console.error(error);
-      notify('Erro ao tentar compartilhar.', 'danger');
+      console.error(`Erro ao compartilhar na etapa "${shareStep}"`, {
+        code: error.code,
+        message: error.message,
+        error,
+      });
+      if (error.code === 'permission-denied') {
+        notify(
+          'A conta foi localizada, mas as regras de segurança do Firestore bloquearam o vínculo entre os perfis. É necessário permitir essa operação nas regras ou realizá-la por uma função segura do Firebase.',
+          'danger'
+        );
+      } else {
+        notify('Erro ao tentar compartilhar. Confira o console para ver a etapa e o código do erro.', 'danger');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,12 +301,20 @@ const Configuracoes = () => {
 
     setLoading(true);
     try {
-      const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-      if (userDoc.exists() && userDoc.data().parceiroId) {
-        await updateDoc(doc(db, "usuarios", userDoc.data().parceiroId), { parceiroId: null });
+      const ownProfileRef = doc(db, "usuarios", user.uid);
+      const userDoc = await getDoc(ownProfileRef);
+      const partnerId = userDoc.exists() ? userDoc.data().parceiroId : null;
+      const batch = writeBatch(db);
+      if (partnerId) {
+        const partnerDoc = await getDoc(doc(db, "usuarios", partnerId));
+        if (partnerDoc.exists() && partnerDoc.data().parceiroId === user.uid) {
+          batch.update(doc(db, "usuarios", partnerId), { parceiroId: null });
+        }
       }
-      await updateDoc(doc(db, "usuarios", user.uid), { parceiroId: null });
+      if (userDoc.exists()) batch.update(ownProfileRef, { parceiroId: null });
+      await batch.commit();
       setLinkedEmail(null);
+      setLinkedPartnerId(null);
       notify('Compartilhamento interrompido.', 'success');
     } catch (error) {
       console.error(error);
@@ -303,6 +448,11 @@ const Configuracoes = () => {
 
       {/* Conteúdo Principal */}
       <main className="flex-1 space-y-8">
+        <div className="border-l-4 border-primary pl-4">
+          <h2 className="page-title">Configurações</h2>
+          <p className="page-subtitle">Gerencie seu perfil, preferências e dados da conta.</p>
+        </div>
+
         {/* Seção Perfil */}
         {activeTab === 'perfil' && (
           <section className="bg-surface border border-border p-8 rounded-3xl shadow-lg">
@@ -310,7 +460,7 @@ const Configuracoes = () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Editar Perfil
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label htmlFor="userName" className="text-xs font-semibold text-text-muted">Nome</label>
@@ -321,11 +471,27 @@ const Configuracoes = () => {
                   <input id="userEmail" type="email" value={user?.email || ''} disabled className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-text-muted text-sm cursor-not-allowed" />
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center">
-                <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center text-primary text-4xl font-black mb-2">
-                  {userName.charAt(0).toUpperCase() || 'U'}
+              <div className="flex flex-col items-center justify-center gap-3 text-center">
+                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-4xl font-black text-primary ring-4 ring-primary/10">
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt={`Foto de perfil de ${userName || 'usuário'}`} className="h-full w-full object-cover" />
+                  ) : (userName.trim().charAt(0).toUpperCase() || 'U')}
                 </div>
-                <button className="text-xs text-primary hover:underline">Alterar foto</button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange}
+                  className="sr-only"
+                  aria-label="Selecionar foto de perfil"
+                />
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button type="button" onClick={() => photoInputRef.current?.click()} disabled={photoLoading} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white transition hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60">
+                    {photoLoading ? 'Enviando foto…' : user?.photoURL ? 'Alterar foto' : 'Adicionar foto'}
+                  </button>
+                  {user?.photoURL && <button type="button" onClick={handleRemovePhoto} disabled={photoLoading} className="rounded-xl border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-secondary transition hover:bg-surface-elevated disabled:cursor-wait disabled:opacity-60">Remover</button>}
+                </div>
+                <p className="max-w-xs text-xs leading-relaxed text-text-muted">Recomendado: imagem quadrada (1:1), com pelo menos 256 × 256 px. Formatos: JPEG, PNG ou WebP. Tamanho máximo: 2 MB.</p>
               </div>
             </div>
             <div className="mt-6 pt-6 border-t border-border">
@@ -414,12 +580,12 @@ const Configuracoes = () => {
               Compartilhamento Financeiro
             </h3>
             
-            {linkedEmail ? (
+            {linkedPartnerId ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-surface-elevated border border-success/10 flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-2xl border border-success/20 bg-success/5 p-4">
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p id="status-label" className="text-xs font-semibold text-text-muted">Status</p>
-                    <p className="text-text-primary text-xs font-bold truncate">Conectado com: {linkedEmail}</p>
+                    <p className="text-xs font-semibold text-success">Compartilhamento ativo</p>
+                    <p className="truncate text-sm font-bold text-text-primary">Dados compartilhados com {linkedEmail || 'conta vinculada'}</p>
                   </div>
                 </div>
                 <button 
@@ -431,12 +597,13 @@ const Configuracoes = () => {
               </div>
             ) : (
               <div className="space-y-4">
+                <p className="text-sm leading-relaxed text-text-secondary">Informe o e-mail usado no cadastro da outra pessoa. O compartilhamento só funciona entre contas já registradas e permite que os dois perfis acompanhem os dados financeiros um do outro.</p>
                 <div className="space-y-1">
-                  <label htmlFor="partnerEmail" className="text-xs font-semibold text-text-muted">E-mail do Cônjuge</label>
+                  <label htmlFor="partnerEmail" className="text-xs font-semibold text-text-muted">E-mail da pessoa com quem deseja compartilhar</label>
                   <input 
                     id="partnerEmail"
                     type="email" 
-                    placeholder="email@parceiro.com"
+                    placeholder="nome@exemplo.com"
                     value={partnerEmail}
                     onChange={(e) => setPartnerEmail(e.target.value)}
                     className="w-full bg-input-background border border-input-border rounded-xl px-4 py-3 text-text-primary text-sm focus:border-primary outline-none transition-all"
@@ -588,10 +755,25 @@ const Configuracoes = () => {
                   {user?.emailVerified ? 'E-mail verificado' : 'Verificação pendente'}
                 </p>
               </div>
+              <div className="rounded-3xl border border-border bg-surface-elevated p-4">
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-text-muted">Compartilhamento financeiro</p>
+                {linkedPartnerId ? (
+                  <>
+                    <p className="font-semibold text-success">Ativo</p>
+                    <p className="mt-1 break-all text-sm text-text-primary">Compartilhado com: {linkedEmail || 'E-mail não disponível'}</p>
+                    <button type="button" onClick={() => setActiveTab('compartilhamento')} className="mt-3 text-sm font-semibold text-primary hover:underline">Gerenciar compartilhamento</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-text-primary">Não compartilhado</p>
+                    <button type="button" onClick={() => setActiveTab('compartilhamento')} className="mt-3 text-sm font-semibold text-primary hover:underline">Compartilhar com outra conta</button>
+                  </>
+                )}
+              </div>
               <div className="rounded-3xl bg-surface-elevated border border-border p-4">
                 <p className="text-text-primary font-semibold mb-2">Melhorias recomendadas</p>
                 <ul className="list-disc list-inside text-text-muted text-sm space-y-2">
-                  <li>Atualize seu perfil com um nome e foto reais.</li>
+                  <li>Mantenha seu nome atualizado para facilitar a identificação da conta.</li>
                   <li>Ative as notificações de resumo mensal para acompanhar melhor gastos.</li>
                   <li>Mantenha o e-mail verificado para maior segurança.</li>
                 </ul>

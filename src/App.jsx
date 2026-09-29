@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
-import { auth } from './services/firebase';
+import { auth, db } from './services/firebase';
 import { signOut, onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useNotification } from './components/NotificationProvider.jsx';
-import Home from './pages/Home';
-import Despesas from './pages/Despesas';
-import Receita from './pages/Receita';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Orcamento from './pages/Limites';
-import Reserva from './pages/Reserva';
-import Investimentos from './pages/Investimentos';
-import Dividas from './pages/Dividas';
-import Configuracoes from './pages/Configuracoes';
-import FluxoDeCaixa from './pages/Saldo';
+const Home = lazy(() => import('./pages/Home'));
+const Despesas = lazy(() => import('./pages/Despesas'));
+const Receita = lazy(() => import('./pages/Receita'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Orcamento = lazy(() => import('./pages/Limites'));
+const Reserva = lazy(() => import('./pages/Reserva'));
+const Investimentos = lazy(() => import('./pages/Investimentos'));
+const Dividas = lazy(() => import('./pages/Dividas'));
+const Configuracoes = lazy(() => import('./pages/Configuracoes'));
+const FluxoDeCaixa = lazy(() => import('./pages/Saldo'));
 import { Footer } from './components/Footer/Footer';
 import logo from './assets/img/marca-01.png';
 
@@ -34,7 +35,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const toggleMenu = () => setIsMobileMenuOpen((open) => !open);
 
   const handleLogout = async () => {
     try {
@@ -74,13 +75,21 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
+          <button
+            type="button"
             onClick={handleLogout}
             className="hidden lg:block bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/20 px-6 h-10 rounded-xl font-bold uppercase text-xs tracking-widest transition-all"
           >
             Sair
           </button>
-          <button onClick={toggleMenu} className="lg:hidden text-text-secondary hover:text-text-primary p-2">
+          <button
+            type="button"
+            onClick={toggleMenu}
+            className="lg:hidden text-text-secondary hover:text-text-primary p-2"
+            aria-label={isMobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-navigation"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/>
             </svg>
@@ -89,7 +98,11 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Menu */}
-      <div className={`lg:hidden absolute top-[72px] left-0 w-full bg-background-secondary border-b border-border transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+      <div
+        id="mobile-navigation"
+        aria-hidden={!isMobileMenuOpen}
+        className={`lg:hidden absolute top-[72px] left-0 w-full max-h-[calc(100dvh-72px)] overflow-y-auto bg-background-secondary border-b border-border transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+      >
         <ul className="p-4 space-y-2">
           {NAV_ITEMS.map((item) => (
             <li key={item.path}>
@@ -108,7 +121,7 @@ const Navbar = () => {
             </li>
           ))}
           <li className="pt-4 border-t border-border">
-            <button onClick={handleLogout} className="w-full bg-danger text-white p-4 rounded-xl font-bold text-center uppercase">Sair</button>
+            <button type="button" onClick={handleLogout} className="w-full bg-danger text-white p-4 rounded-xl font-bold text-center uppercase">Sair</button>
           </li>
         </ul>
       </div>
@@ -179,12 +192,11 @@ const ProtectedRoute = ({ user, loading, children }) => {
 };
 
 const PageLayout = () => {
-  const location = useLocation();
   // Não mostrar footer nas páginas com bottom nav se preferir, ou manter ambos
   return (
     <div className="min-h-screen flex flex-col bg-background-primary text-text-primary">
       <Navbar />
-      <main className="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="app-main flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <Outlet />
       </main>
       
@@ -200,7 +212,24 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser?.email) {
+        try {
+          const profileRef = doc(db, 'usuarios', currentUser.uid);
+          const profileSnap = await getDoc(profileRef);
+          const emailNormalizado = currentUser.email.trim().toLowerCase();
+          const profile = profileSnap.exists() ? profileSnap.data() : {};
+
+          if (!profileSnap.exists() || profile.email !== currentUser.email || profile.emailNormalizado !== emailNormalizado) {
+            await setDoc(profileRef, {
+              email: currentUser.email,
+              emailNormalizado,
+            }, { merge: true });
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar o perfil financeiro da conta:', error);
+        }
+      }
       setUser(currentUser);
       setLoading(false);
     });
@@ -209,6 +238,7 @@ function App() {
 
   return (
     <Router>
+      <Suspense fallback={<div className="mx-auto max-w-7xl p-8 text-sm text-text-secondary" role="status">Carregando página…</div>}>
       <Routes>
         {/* Rotas Públicas: Se já estiver logado, redireciona para a Home */}
         <Route 
@@ -231,8 +261,10 @@ function App() {
           <Route path="/investimentos" element={<Investimentos />} />
           <Route path="/dividas" element={<Dividas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      </Suspense>
     </Router>
   );
 }

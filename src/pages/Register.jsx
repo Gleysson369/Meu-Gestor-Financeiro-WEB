@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../assets/img/icon.png';
-import { auth } from '../services/firebase';
+import { auth, db } from '../services/firebase';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useNotification } from '../components/NotificationProvider.jsx';
+import { doc, setDoc } from 'firebase/firestore';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -47,6 +48,13 @@ const Register = () => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Salva o e-mail no Firestore para busca no compartilhamento (db importado de ../services/firebase)
+      await setDoc(doc(db, "usuarios", userCredential.user.uid), {
+        email: userCredential.user.email,
+        emailNormalizado: userCredential.user.email?.trim().toLowerCase() || email.trim().toLowerCase(),
+        createdAt: new Date(),
+      });
+
       // Envia e-mail de verificação logo após criar a conta
       await sendEmailVerification(userCredential.user);
       notify('Conta criada com sucesso! Enviamos um e-mail de verificação para sua caixa de entrada.', 'success');

@@ -1,7 +1,9 @@
-import { normalizeAssetSymbol, normalizeMovementType, toIsoDate } from './investmentCalculations';
+import { normalizeAssetSymbol, normalizeMovementType } from './investmentCalculations.js';
 
 const getMonthKey = (dateString) => {
   if (!dateString) return null;
+  const datePrefix = String(dateString).match(/^(\d{4})-(\d{2})/);
+  if (datePrefix) return `${datePrefix[1]}-${datePrefix[2]}`;
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return null;
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -11,7 +13,8 @@ const getMonthLabel = (monthKey) => {
   if (!monthKey) return '';
   const [year, month] = monthKey.split('-');
   const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${monthNames[date.getMonth()]}/${year}`;
 };
 
 export function buildBuySellComparison(
@@ -40,6 +43,8 @@ export function buildBuySellComparison(
 
     const quantidade = Number(mov.quantidade || 0);
     if (quantidade <= 0) return acc;
+    const precoUnitario = Number(mov.precoUnitario || 0);
+    if (precoUnitario <= 0) return acc;
 
     const key = grouping === 'asset' ? codigo : getMonthKey(mov.data);
     if (!key) return acc;
@@ -59,7 +64,6 @@ export function buildBuySellComparison(
     }
 
     const item = acc[key];
-    const precoUnitario = Number(mov.precoUnitario || 0);
     const taxas = Number(mov.taxas || 0);
     const value = quantidade * precoUnitario;
 
